@@ -1,3 +1,4 @@
+from statebudgetmem.schemas.annotations import MemoryAnnotation
 from statebudgetmem.schemas.records import (
     MemoryRecord,
     MemoryStatus,
@@ -8,6 +9,7 @@ from statebudgetmem.schemas.records import (
 )
 
 __all__ = [
+    "MemoryAnnotation",
     "MemoryRecord",
     "MemoryStatus",
     "QueryRecord",

@@ -37,9 +37,22 @@ class MemoryRecord(BaseModel):
     importance: float = Field(ge=0.0, le=1.0)
     confidence: float = Field(ge=0.0, le=1.0)
     token_cost: int = Field(ge=0)
+    dimensions: dict[str, str] = Field(default_factory=dict)
     supersedes: list[str] = Field(default_factory=list)
     temporarily_invalidates: list[str] = Field(default_factory=list)
     metadata: dict[str, Any] = Field(default_factory=dict)
+
+    @field_validator("dimensions", mode="before")
+    @classmethod
+    def validate_dimensions_are_strings(cls, dimensions: Any) -> Any:
+        if dimensions is None:
+            return dimensions
+        if not isinstance(dimensions, dict):
+            return dimensions
+        for key, value in dimensions.items():
+            if not isinstance(key, str) or not isinstance(value, str):
+                raise ValueError("dimensions keys and values must be strings")
+        return dimensions
 
     @model_validator(mode="after")
     def validate_valid_range(self) -> "MemoryRecord":
