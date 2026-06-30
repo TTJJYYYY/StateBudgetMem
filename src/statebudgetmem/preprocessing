@@ -1,3 +1,0 @@
-preprocessing 模块负责将原始自然语言记忆转换为项目统一使用的 MemoryRecord。
-模块支持 rule、api、hybrid 三种模式：rule 用于离线可复现实验，api 用于处理复杂自然语言表达，hybrid 在 API 不可用时自动回退到规则版。
-结构化结果中的 previous_value、operation_hint、evidence_span 等字段暂存于 MemoryRecord.metadata，后续由 versioning 模块消费。
