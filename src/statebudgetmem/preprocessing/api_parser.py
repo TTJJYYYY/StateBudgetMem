@@ -4,7 +4,7 @@ import json
 import os
 from typing import Any
 
-from statebudgetmem.preprocessing.compat import MemoryType, UpdateOperation
+from statebudgetmem.baselines.interfaces import MemoryType, UpdateOperation
 from statebudgetmem.preprocessing.models import ParsedMemory, RawMessage, parse_timestamp
 from statebudgetmem.preprocessing.normalizer import canonical_attribute, clean_value
 
