@@ -11,6 +11,8 @@ from statebudgetmem.preprocessing.normalizer import (
     split_clauses,
 )
 
+_VALUE_STOP = r"[^,，.。；;!?！？]+"
+
 
 class RuleBasedParser:
     """规则版预处理器。
@@ -28,14 +30,27 @@ class RuleBasedParser:
         text = normalize_text(raw.content)
         timestamp = parse_timestamp(raw.timestamp)
         memories: list[ParsedMemory] = []
+        changed_attributes: set[str] = set()
 
         state_change = self._parse_state_change(raw, text, timestamp)
         if state_change is not None:
             memories.append(state_change)
+            if state_change.attribute:
+                changed_attributes.add(state_change.attribute)
 
-        for clause in split_clauses(text):
+        for clause in _iter_rule_clauses(text):
             memory = self._parse_clause(raw, clause, timestamp)
-            if memory is not None and not _duplicated(memory, memories):
+            if memory is None:
+                continue
+
+            # 如果整句已经识别出“旧值 -> 新值”的状态变化，
+            # 就不要再把同一 attribute 的普通子句当成当前事实重复加入。
+            # 例如“我以前住上海，现在搬到北京了”只保留 home_location=北京 的 SUPERSEDE 结果，
+            # 不再额外加入 home_location=上海。
+            if memory.attribute in changed_attributes and memory.previous_value is None:
+                continue
+
+            if not _duplicated(memory, memories):
                 memories.append(memory)
 
         if not memories and self.keep_note_fallback:
@@ -64,7 +79,7 @@ class RuleBasedParser:
         timestamp: float,
     ) -> ParsedMemory | None:
         location = re.search(
-            r"(?:以前|之前|原来).{0,8}(?:住在|住|在)(?P<old>.+?)(?:,|，|但|但是|不过|现在|目前|后来).{0,8}(?:搬到|搬去|住在|住|到)(?P<new>.+)",
+            rf"(?:以前|之前|原来).{{0,8}}(?:住在|住|在)(?P<old>.+?)(?:,|，|但|但是|不过|现在|目前|后来).{{0,8}}(?:搬到|搬去|住在|住|到)(?P<new>{_VALUE_STOP})",
             text,
         )
         if location:
@@ -85,7 +100,7 @@ class RuleBasedParser:
             )
 
         preference = re.search(
-            r"(?:以前|之前|原来).{0,8}(?:喜欢|爱|喝|吃)(?P<old>.+?)(?:,|，|但|但是|不过|现在|目前|后来).{0,10}(?:改成|改为|换成|改喝|改吃|喜欢|喝|吃)(?P<new>.+)",
+            rf"(?:以前|之前|原来).{{0,8}}(?:喜欢|爱|喝|吃)(?P<old>.+?)(?:,|，|但|但是|不过|现在|目前|后来).{{0,10}}?(?:改成|改为|换成|改喝|改吃|喜欢|喝|吃)(?P<new>{_VALUE_STOP})",
             text,
         )
         if preference:
@@ -102,6 +117,27 @@ class RuleBasedParser:
                 evidence_span=text,
                 tags=["preference"],
                 confidence=0.78,
+                source=raw.source,
+            )
+
+        preference_switch = re.search(
+            rf"(?:最近|现在|目前)?(?:不再|不)?(?:喝|吃)(?P<old>.+?)(?:了)?(?:,|，|但|但是|不过|改成|改为|换成|改喝|改吃).{{0,8}}(?:改喝|改吃|改成|改为|换成)(?P<new>{_VALUE_STOP})",
+            text,
+        )
+        if preference_switch:
+            new_value = clean_value(preference_switch.group("new"))
+            old_value = clean_value(preference_switch.group("old"))
+            return ParsedMemory(
+                content=f"用户当前偏好是{new_value}",
+                timestamp=timestamp,
+                memory_type=MemoryType.PREFERENCE,
+                operation=UpdateOperation.SUPERSEDE,
+                attribute="preference",
+                value=new_value,
+                previous_value=old_value,
+                evidence_span=text,
+                tags=["preference"],
+                confidence=0.74,
                 source=raw.source,
             )
 
@@ -148,7 +184,10 @@ class RuleBasedParser:
                 source=raw.source,
             )
 
-        home = re.search(r"(?:我|用户)?(?:现在|目前|最近)?(?:住在|住|搬到|搬去)(?P<value>.+)", text)
+        home = re.search(
+            rf"(?:我|用户)?(?:现在|目前|最近)?(?:住在|住|搬到|搬去)(?P<value>{_VALUE_STOP})",
+            text,
+        )
         if home:
             value = clean_value(home.group("value"))
             return ParsedMemory(
@@ -165,7 +204,7 @@ class RuleBasedParser:
             )
 
         meal = re.search(
-            r"(?P<meal>早餐|早饭|午餐|午饭|晚餐|晚饭)(?:通常|一般|喜欢|吃|是)?(?P<value>.+)",
+            rf"(?P<meal>早餐|早饭|午餐|午饭|晚餐|晚饭)(?:通常|一般|喜欢|吃|是)?(?P<value>{_VALUE_STOP})",
             text,
         )
         if meal:
@@ -181,6 +220,25 @@ class RuleBasedParser:
                 evidence_span=text,
                 tags=["habit", attribute],
                 confidence=0.68,
+                source=raw.source,
+            )
+
+        change_to = re.search(
+            rf"(?:改喝|改吃|改成|改为|换成)(?P<value>{_VALUE_STOP})",
+            text,
+        )
+        if change_to:
+            value = clean_value(change_to.group("value"))
+            return ParsedMemory(
+                content=f"用户当前偏好是{value}",
+                timestamp=timestamp,
+                memory_type=MemoryType.PREFERENCE,
+                operation=UpdateOperation.SUPERSEDE,
+                attribute="preference",
+                value=value,
+                evidence_span=text,
+                tags=["preference"],
+                confidence=0.66,
                 source=raw.source,
             )
 
@@ -217,7 +275,7 @@ class RuleBasedParser:
             )
 
         generic = re.search(
-            r"(?:我的|用户的)?(?P<attr>[\u4e00-\u9fffA-Za-z0-9_]{1,12})(?:是|为|=)(?P<value>.+)",
+            rf"(?:我的|用户的)?(?P<attr>[\u4e00-\u9fffA-Za-z0-9_]{{1,12}})(?:是|为|=)(?P<value>{_VALUE_STOP})",
             text,
         )
         if generic:
@@ -252,6 +310,16 @@ class RuleBasedParser:
             )
 
         return None
+
+
+def _iter_rule_clauses(text: str) -> list[str]:
+    clauses: list[str] = []
+    for clause in split_clauses(text):
+        for part in re.split(r"[.。]+", clause):
+            part = normalize_text(part)
+            if part:
+                clauses.append(part)
+    return clauses
 
 
 def _guess_operation(text: str) -> UpdateOperation:
