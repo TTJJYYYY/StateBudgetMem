@@ -1,2 +1,0 @@
-run_id,query_count,mean_recall_at_k,mean_valid_recall_at_k,mean_stale_retrieval_rate,mean_token_cost,mean_retrieval_latency_ms,method,top_k,dataset_path,random_seed,config_path,results_raw_path,model_name,run_time_seconds,git_commit,hardware_info
-tfidf_topk_seed42_k3_20260629T074018Z,24,1.0,1.0,0.25,11.0,0.1357125002717415,tfidf_topk,3,data\controlled\baseline_scenarios.jsonl,42,configs\baseline.yaml,results\raw\tfidf_topk_seed42_k3_20260629T074018Z.jsonl,offline_tfidf_cosine,0.00430429999869375,de5edbd92bf1b2983726d562586bf75d58570b90,Windows-11-10.0.26200-SP0

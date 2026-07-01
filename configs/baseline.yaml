@@ -1,5 +1,0 @@
-method: tfidf_topk
-dataset_path: data/controlled/baseline_scenarios.jsonl
-top_k: 3
-random_seed: 42
-results_dir: results
