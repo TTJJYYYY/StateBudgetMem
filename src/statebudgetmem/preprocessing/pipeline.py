@@ -4,7 +4,7 @@ from collections.abc import Iterable
 from typing import Tuple
 
 from statebudgetmem.preprocessing.api_parser import ApiParser
-from statebudgetmem.preprocessing.compat import MemoryPiece
+from statebudgetmem.baselines.interfaces import MemoryPiece
 from statebudgetmem.preprocessing.models import (
     ParsedMemory,
     PreprocessConfig,
