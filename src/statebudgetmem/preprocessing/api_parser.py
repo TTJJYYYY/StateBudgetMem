@@ -137,18 +137,20 @@ content: {raw.content}
 
 
 def _parse_operation(value: Any) -> UpdateOperation:
-    raw = str(value or "add").strip().lower()
+    raw = str(value or "add").strip().lower().replace("-", "_").replace(" ", "_")
+
     mapping = {
         "add": UpdateOperation.ADD,
-        "update": UpdateOperation.UPDATE,
+        "update": UpdateOperation.MERGE,
+        "merge": UpdateOperation.MERGE,
         "delete": UpdateOperation.DELETE,
         "noop": UpdateOperation.NOOP,
-        "merge": UpdateOperation.MERGE,
         "supersede": UpdateOperation.SUPERSEDE,
         "temp_invalidate": UpdateOperation.TEMP_INVALIDATE,
         "temporary_invalidate": UpdateOperation.TEMP_INVALIDATE,
         "restore": UpdateOperation.RESTORE,
     }
+
     return mapping.get(raw, UpdateOperation.ADD)
 
 
