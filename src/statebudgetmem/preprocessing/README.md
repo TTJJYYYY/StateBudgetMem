@@ -2,7 +2,7 @@
 
 `preprocessing` 模块负责将原始自然语言记忆转换为项目统一使用的 `MemoryRecord`。
 
-它是整个 StateBudgetMem 的数据入口，不负责最终的版本更新，也不维护 Current View / History View。它只负责把自然语言整理成结构化记忆，供后续 `baselines`、`versioning`、`views` 等模块使用。
+它是整个 StateBudgetMem 的数据入口，不负责最终的版本更新。它只负责把自然语言整理成结构化记忆，供后续 `baselines`、`versioning`、`views` 等模块使用。
 
 ## 1. 功能概述
 
