@@ -1,20 +1,29 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
+from typing import Tuple
 
 from statebudgetmem.preprocessing.api_parser import ApiParser
-from statebudgetmem.preprocessing.models import PreprocessConfig, RawMemoryInput, StructuredMemory
+from statebudgetmem.preprocessing.compat import MemoryPiece
+from statebudgetmem.preprocessing.models import (
+    ParsedMemory,
+    PreprocessConfig,
+    RawMessage,
+    messages_to_raw_messages,
+)
 from statebudgetmem.preprocessing.rule_parser import RuleBasedParser
-from statebudgetmem.schemas import MemoryRecord, Scenario
 
 
 class MemoryPreprocessor:
-    """预处理主入口：RawMemoryInput -> Scenario/MemoryRecord。
+    """预处理主入口。
 
-    支持三种模式：
-    - rule：只用规则解析；
-    - api：只用外部 API；
-    - hybrid：优先 API，失败后回退规则解析。
+    输入：
+    - RawMessage
+    - 或主接口使用的 messages: [(role, content, timestamp), ...]
+
+    输出：
+    - ParsedMemory: 带 operation / previous_value / evidence_span
+    - MemoryPiece: 对齐当前 main 分支统一接口
     """
 
     def __init__(self, config: PreprocessConfig | None = None) -> None:
@@ -22,30 +31,37 @@ class MemoryPreprocessor:
         self.rule_parser = RuleBasedParser(keep_note_fallback=self.config.keep_note_fallback)
         self.api_parser = ApiParser(model=self.config.api_model)
 
-    def preprocess_memories(self, raw_inputs: Iterable[RawMemoryInput]) -> list[MemoryRecord]:
-        memories: list[MemoryRecord] = []
-        counter = 1
+    def parse_raw_messages(self, raw_messages: Iterable[RawMessage]) -> list[ParsedMemory]:
+        results: list[ParsedMemory] = []
 
-        for raw in raw_inputs:
-            for item in self._parse_one(raw):
-                if item.confidence < self.config.min_confidence:
-                    continue
+        for raw in raw_messages:
+            parsed_items = self._parse_one(raw)
+            for item in parsed_items:
+                if item.confidence >= self.config.min_confidence:
+                    results.append(item)
 
-                memory_id = f"{self.config.scenario_id}_M{counter:04d}"
-                memories.append(item.to_memory_record(memory_id))
-                counter += 1
+        return results
 
-        return memories
+    def parse_messages(
+        self,
+        messages: Iterable[Tuple[str, str, str | float | int]],
+    ) -> list[ParsedMemory]:
+        raw_messages = messages_to_raw_messages(messages)
+        return self.parse_raw_messages(raw_messages)
 
-    def preprocess_scenario(self, raw_inputs: Iterable[RawMemoryInput]) -> Scenario:
-        return Scenario(
-            scenario_id=self.config.scenario_id,
-            description=self.config.description,
-            memories=self.preprocess_memories(raw_inputs),
-            queries=[],
-        )
+    def to_memory_pieces(self, parsed_memories: Iterable[ParsedMemory]) -> list[MemoryPiece]:
+        return [item.to_memory_piece() for item in parsed_memories]
 
-    def _parse_one(self, raw: RawMemoryInput) -> list[StructuredMemory]:
+    def preprocess_raw_messages(self, raw_messages: Iterable[RawMessage]) -> list[MemoryPiece]:
+        return self.to_memory_pieces(self.parse_raw_messages(raw_messages))
+
+    def preprocess_messages(
+        self,
+        messages: Iterable[Tuple[str, str, str | float | int]],
+    ) -> list[MemoryPiece]:
+        return self.to_memory_pieces(self.parse_messages(messages))
+
+    def _parse_one(self, raw: RawMessage) -> list[ParsedMemory]:
         if self.config.parser_type == "rule":
             return self.rule_parser.parse(raw)
 
@@ -57,9 +73,9 @@ class MemoryPreprocessor:
                 api_result = self.api_parser.parse(raw)
                 if api_result:
                     return api_result
-            except Exception as exc:
+            except Exception:
                 if not self.config.fallback_to_rule:
-                    raise exc
+                    raise
 
             return self.rule_parser.parse(raw)
 

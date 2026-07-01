@@ -1,129 +1,162 @@
 from __future__ import annotations
 
-from datetime import date
-from enum import Enum
-from typing import Any
+import hashlib
+from dataclasses import dataclass, field
+from datetime import datetime
+from typing import Any, Iterable, Optional, Tuple
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from statebudgetmem.preprocessing.compat import (
+    MemoryPiece,
+    MemoryStatus,
+    MemoryType,
+    QueryType,
+    UpdateOperation,
+)
 
-from statebudgetmem.preprocessing.normalizer import estimate_token_cost
-from statebudgetmem.schemas import MemoryRecord, MemoryStatus
 
+@dataclass
+class RawMessage:
+    """预处理模块接收的原始消息。
 
-class OperationHint(str, Enum):
-    """预处理给 versioning 的更新提示。
-
-    注意：这只是 hint，不是最终版本更新结果。
-
-    TODO: 和 versioning/views 小组合并时，需要最终确认：
-    1. operation_hint 的枚举值是否够用；
-    2. previous_value 是否足够表达旧状态；
-    3. 这些字段是否需要移动到全项目公共 schema。
+    对齐主接口中的 messages: [(role, content, timestamp), ...]。
     """
 
-    ADD = "ADD"
-    MERGE = "MERGE"
-    SUPERSEDE = "SUPERSEDE"
-    TEMP_INVALIDATE = "TEMP_INVALIDATE"
-    DELETE = "DELETE"
-    NOOP = "NOOP"
-    UNKNOWN = "UNKNOWN"
+    role: str
+    content: str
+    timestamp: str | float | int
+    source: Optional[str] = None
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+    def as_tuple(self) -> Tuple[str, str, str]:
+        return (self.role, self.content, str(self.timestamp))
 
 
-class RawMemoryInput(BaseModel):
-    """预处理模块的原始输入格式。
+@dataclass
+class ParsedMemory:
+    """预处理后的结构化记忆草稿。
 
-    不管原始数据来自聊天、笔记还是 benchmark，进入 preprocessing 前都先转成这个结构。
+    这不是新的全局接口，只是 preprocessing 内部结果。
+    最终通过 to_memory_piece() 转成项目统一的 MemoryPiece。
     """
 
-    model_config = ConfigDict(extra="forbid")
+    content: str
+    timestamp: float
+    memory_type: MemoryType = MemoryType.FACT
+    operation: UpdateOperation = UpdateOperation.ADD
 
-    raw_id: str
-    text: str
-    observed_at: date
-    subject: str = "user"
-    source_type: str = "raw"
-    speaker: str = "user"
-    metadata: dict[str, Any] = Field(default_factory=dict)
-
-
-class StructuredMemory(BaseModel):
-    """预处理后的结构化草稿。
-
-    它还不是最终版本管理结果，只是从自然语言中抽出来的结构化事实。
-
-    TODO: 这里是项目需要统一规定的结构化字段协议。
-    目前先保留 attribute/value/previous_value/operation_hint/evidence_span。
-    后续和 versioning/views 对接时，如果字段名要改，只应该在这里集中修改。
-    """
-
-    model_config = ConfigDict(extra="forbid")
-
-    subject: str = "user"
-    attribute: str
-    value: str
-    text: str
-    event_time: date
-
-    status: MemoryStatus = MemoryStatus.CURRENT
-    memory_type: str = "profile"
-    importance: float = Field(default=0.5, ge=0.0, le=1.0)
-    confidence: float = Field(default=0.6, ge=0.0, le=1.0)
-
-    previous_value: str | None = None
-    operation_hint: OperationHint = OperationHint.ADD
-    evidence_span: str | None = None
+    attribute: Optional[str] = None
+    value: Optional[str] = None
+    previous_value: Optional[str] = None
+    evidence_span: Optional[str] = None
+    tags: list[str] = field(default_factory=list)
+    confidence: float = 0.8
+    source: Optional[str] = None
     needs_review: bool = False
-    source_raw_id: str | None = None
-    metadata: dict[str, Any] = Field(default_factory=dict)
 
-    @model_validator(mode="after")
-    def fill_evidence(self) -> "StructuredMemory":
-        if self.evidence_span is None:
-            self.evidence_span = self.text
-        return self
-
-    def to_memory_record(self, memory_id: str) -> MemoryRecord:
-        metadata = dict(self.metadata)
-        metadata.update(
-            {
-                "source_raw_id": self.source_raw_id,
-                "previous_value": self.previous_value,
-                "operation_hint": self.operation_hint.value,
-                "evidence_span": self.evidence_span,
-                "needs_review": self.needs_review,
-            }
+    def to_memory_piece(self) -> MemoryPiece:
+        memory_id = _stable_memory_id(
+            self.content,
+            self.timestamp,
+            self.attribute or "",
+            self.value or "",
         )
 
-        return MemoryRecord(
-            memory_id=memory_id,
-            subject=self.subject,
-            attribute=self.attribute,
-            value=self.value,
-            text=self.text,
-            event_time=self.event_time,
-            valid_from=self.event_time if self.status == MemoryStatus.CURRENT else None,
-            valid_to=None,
-            status=self.status,
+        tags = list(dict.fromkeys(self.tags + _auto_tags(self)))
+
+        return MemoryPiece(
+            content=self.content,
+            timestamp=self.timestamp,
             memory_type=self.memory_type,
-            importance=self.importance,
+            memory_id=memory_id,
+            version=1,
+            parent_id=None,
+            status=MemoryStatus.ACTIVE,
+            validity_period=(self.timestamp, None),
+            tags=tags,
             confidence=self.confidence,
-            token_cost=estimate_token_cost(self.text),
-            metadata=metadata,
+            source=self.source,
+            query_types=_default_query_types(self),
         )
 
 
-class PreprocessConfig(BaseModel):
-    """预处理配置。"""
+@dataclass
+class PreprocessConfig:
+    """预处理配置。
 
-    model_config = ConfigDict(extra="forbid")
+    parser_type:
+    - rule: 只用规则解析
+    - api: 只用外部 API
+    - hybrid: 优先 API，失败后回退规则解析
+    """
 
-    scenario_id: str = "S_PREPROCESSED"
-    description: str = "Scenario generated from raw user text."
-
-    parser_type: str = "hybrid"  # rule / api / hybrid
-    api_model: str = "gpt-4o-mini"
+    parser_type: str = "hybrid"
+    api_model: str = "deepseek-chat"
     fallback_to_rule: bool = True
-
     keep_note_fallback: bool = True
-    min_confidence: float = Field(default=0.0, ge=0.0, le=1.0)
+    min_confidence: float = 0.0
+
+
+def parse_timestamp(value: str | float | int) -> float:
+    if isinstance(value, (int, float)):
+        return float(value)
+
+    text = str(value).strip()
+
+    for fmt in [
+        "%Y-%m-%d %H:%M:%S",
+        "%Y-%m-%d %H:%M",
+        "%Y-%m-%d",
+        "%Y/%m/%d %H:%M:%S",
+        "%Y/%m/%d",
+    ]:
+        try:
+            return datetime.strptime(text, fmt).timestamp()
+        except ValueError:
+            continue
+
+    try:
+        return float(text)
+    except ValueError:
+        return datetime.now().timestamp()
+
+
+def messages_to_raw_messages(
+    messages: Iterable[Tuple[str, str, str | float | int]],
+) -> list[RawMessage]:
+    return [
+        RawMessage(role=role, content=content, timestamp=timestamp)
+        for role, content, timestamp in messages
+    ]
+
+
+def _stable_memory_id(*parts: str | float) -> str:
+    raw = "|".join(str(part) for part in parts)
+    return hashlib.md5(raw.encode("utf-8")).hexdigest()[:12]
+
+
+def _auto_tags(memory: ParsedMemory) -> list[str]:
+    tags: list[str] = ["preprocessed"]
+
+    if memory.attribute:
+        tags.append(memory.attribute)
+
+    if memory.operation:
+        tags.append(f"op:{memory.operation.value}")
+
+    if memory.previous_value:
+        tags.append("has_previous_value")
+
+    if memory.needs_review:
+        tags.append("needs_review")
+
+    return tags
+
+
+def _default_query_types(memory: ParsedMemory) -> list[QueryType]:
+    if memory.operation == UpdateOperation.SUPERSEDE:
+        return [QueryType.CURRENT, QueryType.CHANGE]
+
+    if memory.previous_value:
+        return [QueryType.CURRENT, QueryType.CHANGE]
+
+    return [QueryType.CURRENT]
