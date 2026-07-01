@@ -4,205 +4,174 @@ import json
 import os
 from typing import Any
 
-from pydantic import BaseModel, Field, ValidationError
-
-from statebudgetmem.preprocessing.models import OperationHint, RawMemoryInput, StructuredMemory
-from statebudgetmem.preprocessing.normalizer import canonical_attribute, clean_value, infer_memory_type
-from statebudgetmem.schemas import MemoryStatus
-
-
-class ApiMemoryItem(BaseModel):
-    attribute: str = Field(description="标准化属性名，例如 home_location, preference, allergy")
-    value: str = Field(description="当前值")
-    previous_value: str | None = Field(default=None, description="旧值，没有则为 null")
-    operation_hint: OperationHint = Field(default=OperationHint.ADD)
-    evidence_span: str = Field(description="原文中支持该记忆的片段")
-    confidence: float = Field(default=0.7, ge=0.0, le=1.0)
-    needs_review: bool = False
-
-
-class ApiParseResult(BaseModel):
-    memories: list[ApiMemoryItem]
+from statebudgetmem.preprocessing.compat import MemoryType, UpdateOperation
+from statebudgetmem.preprocessing.models import ParsedMemory, RawMessage, parse_timestamp
+from statebudgetmem.preprocessing.normalizer import canonical_attribute, clean_value
 
 
 class ApiParser:
-    """外部 API 版信息预处理器。
+    """外部 API 版预处理器。
 
-    不在代码里写死 API key，而是从 OPENAI_API_KEY 环境变量读取。
+    默认使用 OpenAI-compatible Chat Completions 接口。
+    可用于 DeepSeek / OpenAI / 其他兼容服务。
+
+    环境变量：
+    - SBM_API_KEY 或 DEEPSEEK_API_KEY 或 OPENAI_API_KEY
+    - SBM_API_BASE_URL，可选
+    - SBM_API_MODEL，可选
     """
 
-    def __init__(self, model: str = "gpt-4o-mini") -> None:
-        self.model = model
+    def __init__(self, model: str = "deepseek-chat") -> None:
+        self.model = os.getenv("SBM_API_MODEL", model)
 
-    def parse(self, raw: RawMemoryInput) -> list[StructuredMemory]:
-        result = self._call_openai(raw)
-        memories: list[StructuredMemory] = []
+    def parse(self, raw: RawMessage) -> list[ParsedMemory]:
+        data = self._call_api(raw)
+        timestamp = parse_timestamp(raw.timestamp)
 
-        for item in result.memories:
-            attribute = canonical_attribute(item.attribute)
-            memory_type = infer_memory_type(attribute)
+        memories: list[ParsedMemory] = []
+        for item in data.get("memories", []):
+            attribute = canonical_attribute(str(item.get("attribute", "fact")))
+            value = clean_value(item.get("value"))
+            previous_value = item.get("previous_value")
+            operation = _parse_operation(item.get("operation", "add"))
+            memory_type = _parse_memory_type(item.get("memory_type"), attribute)
+
+            evidence = str(item.get("evidence_span") or raw.content)
+            confidence = float(item.get("confidence", 0.7))
+            tags = item.get("tags") or []
+            if isinstance(tags, str):
+                tags = [tags]
 
             memories.append(
-                StructuredMemory(
-                    subject=raw.subject,
-                    attribute=attribute,
-                    value=clean_value(item.value),
-                    text=item.evidence_span,
-                    event_time=raw.observed_at,
-                    status=MemoryStatus.CURRENT,
+                ParsedMemory(
+                    content=str(item.get("content") or _build_content(attribute, value)),
+                    timestamp=timestamp,
                     memory_type=memory_type,
-                    importance=_default_importance(memory_type, attribute),
-                    confidence=item.confidence,
-                    previous_value=clean_value(item.previous_value) if item.previous_value else None,
-                    operation_hint=item.operation_hint,
-                    evidence_span=item.evidence_span,
-                    needs_review=item.needs_review or item.confidence < 0.45,
-                    source_raw_id=raw.raw_id,
-                    metadata={
-                        "source_type": raw.source_type,
-                        "speaker": raw.speaker,
-                        "parser": "api",
-                        **raw.metadata,
-                    },
+                    operation=operation,
+                    attribute=attribute,
+                    value=value,
+                    previous_value=clean_value(previous_value) if previous_value else None,
+                    evidence_span=evidence,
+                    tags=list(tags),
+                    confidence=max(0.0, min(1.0, confidence)),
+                    source=raw.source,
+                    needs_review=bool(item.get("needs_review", False)),
                 )
             )
 
         return memories
 
-    def _call_openai(self, raw: RawMemoryInput) -> ApiParseResult:
+    def _call_api(self, raw: RawMessage) -> dict[str, Any]:
         try:
             from openai import OpenAI
         except ImportError as exc:
-            raise RuntimeError("缺少 openai 依赖。请先安装：pip install openai") from exc
+            raise RuntimeError("缺少 openai 依赖，请先安装：pip install openai") from exc
 
-        if not os.getenv("OPENAI_API_KEY"):
-            raise RuntimeError("未检测到 OPENAI_API_KEY。请先设置环境变量，不要把 key 写进代码。")
+        api_key = (
+            os.getenv("SBM_API_KEY")
+            or os.getenv("DEEPSEEK_API_KEY")
+            or os.getenv("OPENAI_API_KEY")
+        )
+        if not api_key:
+            raise RuntimeError("未检测到 API key，请设置 SBM_API_KEY / DEEPSEEK_API_KEY / OPENAI_API_KEY")
 
-        client = OpenAI()
+        base_url = os.getenv("SBM_API_BASE_URL")
+        client = OpenAI(api_key=api_key, base_url=base_url) if base_url else OpenAI(api_key=api_key)
 
-        response = client.responses.create(
+        response = client.chat.completions.create(
             model=self.model,
-            input=_build_prompt(raw),
-            text={
-                "format": {
-                    "type": "json_schema",
-                    "name": "memory_preprocessing_result",
-                    "strict": True,
-                    "schema": _json_schema(),
-                }
-            },
+            temperature=0,
+            response_format={"type": "json_object"},
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "你是 StateBudgetMem 的 preprocessing 模块。"
+                        "请把用户自然语言记忆抽取成 JSON，不要输出 JSON 以外的文字。"
+                    ),
+                },
+                {
+                    "role": "user",
+                    "content": _build_prompt(raw),
+                },
+            ],
         )
 
-        content = getattr(response, "output_text", None)
-        if not content:
-            content = _extract_text_from_response(response)
-
-        try:
-            return ApiParseResult.model_validate(json.loads(content))
-        except (json.JSONDecodeError, ValidationError) as exc:
-            raise RuntimeError(f"API 返回结果无法解析为结构化记忆：{content}") from exc
+        content = response.choices[0].message.content or "{}"
+        return json.loads(content)
 
 
-def _build_prompt(raw: RawMemoryInput) -> str:
+def _build_prompt(raw: RawMessage) -> str:
     return f"""
-你是 StateBudgetMem 项目的信息预处理模块。
-任务：把用户自然语言记忆转换成结构化记忆。
+请从下面文本中抽取结构化记忆，输出 JSON：
 
-请抽取用户当前状态、偏好、习惯、健康信息、位置、身份信息等。
+{{
+  "memories": [
+    {{
+      "content": "自然语言形式的结构化记忆，例如：用户当前居住地是北京",
+      "attribute": "标准化属性名，例如 home_location / preference / allergy / breakfast",
+      "value": "当前值",
+      "previous_value": "旧值；没有则为 null",
+      "operation": "add / update / delete / noop / merge / supersede / temp_invalidate",
+      "memory_type": "fact / event / preference / dialog",
+      "evidence_span": "原文证据片段",
+      "tags": ["标签"],
+      "confidence": 0.0到1.0,
+      "needs_review": false
+    }}
+  ]
+}}
 
-特别注意：
-1. “以前 A，现在 B” 应抽取 B，并把 A 放入 previous_value，operation_hint 为 SUPERSEDE。
-2. “暂时/这周/这几天” 这类表达，operation_hint 可为 TEMP_INVALIDATE。
-3. “别记/忘掉/删除” 这类表达，operation_hint 为 DELETE。
-4. 无明显事实的信息不要强行抽取，可返回空列表。
-5. attribute 尽量使用稳定字段名，例如 home_location, preference, allergy, breakfast, company。
+规则：
+1. “以前 A，现在 B” 应抽取 B，previous_value 填 A，operation 用 supersede。
+2. “暂时/这周/这几天” 可用 temp_invalidate。
+3. “别记/忘掉/删除” 用 delete。
+4. 没有明确事实时 memories 返回空列表。
+5. 不要编造原文没有的信息。
 
-原始输入：
-raw_id: {raw.raw_id}
-observed_at: {raw.observed_at}
-text: {raw.text}
+原始消息：
+role: {raw.role}
+timestamp: {raw.timestamp}
+content: {raw.content}
 """
 
 
-def _json_schema() -> dict[str, Any]:
-    return {
-        "type": "object",
-        "additionalProperties": False,
-        "properties": {
-            "memories": {
-                "type": "array",
-                "items": {
-                    "type": "object",
-                    "additionalProperties": False,
-                    "properties": {
-                        "attribute": {"type": "string"},
-                        "value": {"type": "string"},
-                        "previous_value": {
-                            "anyOf": [{"type": "string"}, {"type": "null"}],
-                        },
-                        "operation_hint": {
-                            "type": "string",
-                            "enum": [
-                                "ADD",
-                                "MERGE",
-                                "SUPERSEDE",
-                                "TEMP_INVALIDATE",
-                                "DELETE",
-                                "NOOP",
-                                "UNKNOWN",
-                            ],
-                        },
-                        "evidence_span": {"type": "string"},
-                        "confidence": {
-                            "type": "number",
-                            "minimum": 0,
-                            "maximum": 1,
-                        },
-                        "needs_review": {"type": "boolean"},
-                    },
-                    "required": [
-                        "attribute",
-                        "value",
-                        "previous_value",
-                        "operation_hint",
-                        "evidence_span",
-                        "confidence",
-                        "needs_review",
-                    ],
-                },
-            }
-        },
-        "required": ["memories"],
+def _parse_operation(value: Any) -> UpdateOperation:
+    raw = str(value or "add").strip().lower()
+    mapping = {
+        "add": UpdateOperation.ADD,
+        "update": UpdateOperation.UPDATE,
+        "delete": UpdateOperation.DELETE,
+        "noop": UpdateOperation.NOOP,
+        "merge": UpdateOperation.MERGE,
+        "supersede": UpdateOperation.SUPERSEDE,
+        "temp_invalidate": UpdateOperation.TEMP_INVALIDATE,
+        "temporary_invalidate": UpdateOperation.TEMP_INVALIDATE,
+        "restore": UpdateOperation.RESTORE,
     }
+    return mapping.get(raw, UpdateOperation.ADD)
 
 
-def _extract_text_from_response(response: Any) -> str:
-    """兼容不同 SDK 返回对象，尽量从 response.output 中取文本。"""
-    try:
-        output = response.output
-        for item in output:
-            content = getattr(item, "content", None)
-            if not content:
-                continue
-            for part in content:
-                text = getattr(part, "text", None)
-                if text:
-                    return text
-    except Exception:
-        pass
+def _parse_memory_type(value: Any, attribute: str) -> MemoryType:
+    raw = str(value or "").strip().lower()
 
-    raise RuntimeError("无法从 API response 中提取文本结果。")
+    if raw == "preference" or attribute == "preference":
+        return MemoryType.PREFERENCE
+
+    if raw == "event":
+        return MemoryType.EVENT
+
+    if raw == "dialog":
+        return MemoryType.DIALOG
+
+    if raw == "summary":
+        return MemoryType.SUMMARY
+
+    if raw == "portrait":
+        return MemoryType.PORTRAIT
+
+    return MemoryType.FACT
 
 
-def _default_importance(memory_type: str, attribute: str) -> float:
-    if attribute == "allergy":
-        return 0.9
-    if memory_type == "health":
-        return 0.85
-    if memory_type == "profile":
-        return 0.7
-    if memory_type == "preference":
-        return 0.65
-    if memory_type == "habit":
-        return 0.6
-    return 0.4
+def _build_content(attribute: str, value: str) -> str:
+    return f"用户的{attribute}是{value}"
