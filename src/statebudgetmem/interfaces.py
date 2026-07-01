@@ -3,10 +3,12 @@
 There are two intentionally related interface layers:
 
 1. ``MemoryPiece`` / ``MemorySystem`` for an online memory backend.
-2. ``MemoryMethod`` / ``MethodResult`` for reproducible controlled experiments.
+2. ``MemoryRecord`` / ``MemoryMethod`` for reproducible controlled experiments.
 
-All modules should import these objects from ``statebudgetmem.interfaces`` or the
-corresponding schema modules instead of defining private copies.
+Version-management contracts are exported from the real versioning module so
+that the public facade and ``VersioningEngine`` use the same operation enum and
+API. All modules should import public objects from ``statebudgetmem.interfaces``
+instead of defining private copies.
 """
 
 from statebudgetmem.core.method import MemoryMethod
@@ -16,8 +18,6 @@ from statebudgetmem.core.online import (
     MemorySystem,
     MemoryType,
     QueryRouter,
-    UpdateOperation,
-    VersionManager,
     ViewManager,
     ViewType,
     filter_memories,
@@ -32,6 +32,7 @@ from statebudgetmem.schemas import (
     Scenario,
 )
 from statebudgetmem.schemas.results import MethodResult
+from statebudgetmem.versioning.contracts import UpdateOperation, VersionManager
 
 __all__ = [
     "MemoryMethod",

@@ -1,9 +1,14 @@
-from statebudgetmem.versioning.adapters import MemoryAdapter, MemoryRecordAdapter
+from statebudgetmem.versioning.adapters import (
+    MemoryAdapter,
+    MemoryRecordAdapter,
+    normalize_versioning_metadata,
+)
 from statebudgetmem.versioning.classifier import (
     OperationClassifier,
     RuleBasedOperationClassifier,
     RuleClassifierPolicy,
 )
+from statebudgetmem.versioning.contracts import VersionManager
 from statebudgetmem.versioning.engine import VersioningEngine
 from statebudgetmem.versioning.exceptions import (
     DuplicateNodeError,
@@ -69,6 +74,7 @@ __all__ = [
     "VersionEdge",
     "VersionGraph",
     "VersionGraphValidator",
+    "VersionManager",
     "VersionNode",
     "VersionRelation",
     "VersionResolver",
@@ -76,4 +82,5 @@ __all__ = [
     "VersioningEngine",
     "VersioningError",
     "VersioningInvariantError",
+    "normalize_versioning_metadata",
 ]

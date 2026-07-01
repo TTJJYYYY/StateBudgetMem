@@ -4,10 +4,16 @@ from enum import Enum
 
 
 class UpdateOperation(str, Enum):
-    """A single update decision for an incoming memory.
+    """Canonical state-version update operation.
 
-    RESTORE means a new recovery signal restores a long-term state that was
-    previously temporarily overridden.
+    Enum values stay uppercase because the controlled datasets and the
+    versioning graph already use uppercase operation names. ``_missing_``
+    accepts lowercase/config spellings and the legacy online-interface name
+    ``UPDATE``.
+
+    ``UPDATE`` is treated as ``MERGE`` for backward compatibility: the old
+    online contract described UPDATE as supplementing an existing memory,
+    which is the closest versioning operation.
     """
 
     ADD = "ADD"
@@ -17,6 +23,22 @@ class UpdateOperation(str, Enum):
     RESTORE = "RESTORE"
     DELETE = "DELETE"
     NOOP = "NOOP"
+
+    @classmethod
+    def _missing_(cls, value: object) -> "UpdateOperation | None":
+        if isinstance(value, Enum):
+            value = value.value
+        if not isinstance(value, str):
+            return None
+
+        normalized = value.strip().upper().replace("-", "_").replace(" ", "_")
+        if normalized == "UPDATE":
+            normalized = "MERGE"
+
+        for member in cls:
+            if normalized in {member.name, member.value}:
+                return member
+        return None
 
 
 class VersionRelation(str, Enum):
