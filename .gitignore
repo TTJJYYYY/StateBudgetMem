@@ -216,6 +216,7 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+<<<<<<< HEAD
 
 # Integrated project local artifacts
 __pycache__/
@@ -231,3 +232,5 @@ dist/
 .pytest_cache/
 .coverage
 htmlcov/
+=======
+>>>>>>> ba900d42c9450c7df9e9737f2bedadadbdce7427

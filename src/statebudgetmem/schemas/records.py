@@ -15,17 +15,21 @@ class MemoryStatus(str, Enum):
 
 
 class QueryType(str, Enum):
+<<<<<<< HEAD
     """Canonical query type shared by schemas, routing, and evaluation.
 
     Enum values remain uppercase to preserve the controlled-dataset contract,
     while ``_missing_`` accepts lowercase/config spellings such as ``"current"``.
     """
 
+=======
+>>>>>>> ba900d42c9450c7df9e9737f2bedadadbdce7427
     CURRENT = "CURRENT"
     HISTORICAL = "HISTORICAL"
     CHANGE = "CHANGE"
     GENERAL = "GENERAL"
 
+<<<<<<< HEAD
     @classmethod
     def _missing_(cls, value: object) -> "QueryType | None":
         if isinstance(value, str):
@@ -35,6 +39,8 @@ class QueryType(str, Enum):
                     return member
         return None
 
+=======
+>>>>>>> ba900d42c9450c7df9e9737f2bedadadbdce7427
 
 class MemoryRecord(BaseModel):
     model_config = ConfigDict(extra="forbid")

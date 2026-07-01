@@ -20,10 +20,16 @@
 执行任何任务前，先阅读：
 
 1. `docs/StateBudgetMem_research_plan.md`
+<<<<<<< HEAD
 2. `docs/ARCHITECTURE.md` 与 `docs/TEAM_WORKFLOW.md`
 3. 当前任务说明文件，例如 `docs/CODEX_TASK_XXX.md`
 4. 相关模块的现有代码、测试和配置
 5. `README.md` 中的运行方式与目录约定
+=======
+2. 当前任务说明文件，例如 `docs/CODEX_TASK_XXX.md`
+3. 相关模块的现有代码、测试和配置
+4. `README.md` 中的运行方式与目录约定
+>>>>>>> ba900d42c9450c7df9e9737f2bedadadbdce7427
 
 其中：
 
@@ -101,6 +107,7 @@ StateBudgetMem/
 ├── configs/
 ├── data/
 │   ├── controlled/
+<<<<<<< HEAD
 │   └── external/
 ├── docs/
 ├── examples/
@@ -129,6 +136,33 @@ StateBudgetMem/
 
 按方法聚合专属代码：MemoryBank 的系统、Agent、数据适配、评测、过期分析和 Demo 都放在 `baselines/memorybank/`；TF-IDF 的检索、适配器和实验运行器都放在 `baselines/tfidf/`。只把真正跨方法复用的协议和指标放进 `core/`、`retrieval/`、`evaluation/`。
 
+=======
+│   ├── public/
+│   └── processed/
+├── docs/
+├── src/
+│   └── statebudgetmem/
+│       ├── schemas/
+│       ├── data/
+│       ├── extraction/
+│       ├── memory_store/
+│       ├── versioning/
+│       ├── views/
+│       ├── routing/
+│       ├── retrieval/
+│       ├── generation/
+│       ├── evaluation/
+│       ├── experiments/
+│       └── cli.py
+├── tests/
+├── results/
+│   ├── raw/
+│   ├── summaries/
+│   └── figures/
+└── scripts/
+```
+
+>>>>>>> ba900d42c9450c7df9e9737f2bedadadbdce7427
 不要随意创建重复目录。新增目录或模块前，先检查现有结构。
 
 ---

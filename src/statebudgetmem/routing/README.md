@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # StateBudgetMem / Routing 模块
 
 > 时态一致性记忆系统的 **查询分类与记忆路由** 子模块
@@ -96,3 +97,23 @@ pytest -q
 - 离线测试隔离验证
 - interfaces.QueryRouter ABC 兼容性
 - Memora 长周期场景模拟
+=======
+# 查询分类与记忆路由
+
+本目录负责判断问题类型，并决定应使用哪种记忆视图。
+
+查询类型：
+
+- CURRENT：询问当前状态；
+- HISTORICAL：询问过去状态；
+- CHANGE：询问状态变化；
+- GENERAL：通常不需要个人记忆。
+
+本阶段需要实现：
+
+1. 规则版查询分类器；
+2. 查询路由器；
+3. 当前视图和历史视图选择；
+4. 查询相关的记忆有效性判断；
+5. Routing Accuracy 等评测。
+>>>>>>> ba900d42c9450c7df9e9737f2bedadadbdce7427
