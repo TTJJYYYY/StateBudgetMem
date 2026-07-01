@@ -58,6 +58,25 @@ def build_parser() -> argparse.ArgumentParser:
         "--backend", choices=["tfidf", "memorybank"], default="tfidf"
     )
 
+    pipeline_parser = subparsers.add_parser(
+        "pipeline",
+        help="Run the end-to-end memory pipeline (route -> view -> retrieve).",
+    )
+    pipeline_parser.add_argument("--query", "-q", required=True, help="User query text.")
+    pipeline_parser.add_argument(
+        "--dataset", default="data/controlled/baseline_scenarios.jsonl",
+        help="Controlled JSONL dataset path.",
+    )
+    pipeline_parser.add_argument(
+        "--mode", choices=["rule", "llm"], default="rule", help="Router mode.",
+    )
+    pipeline_parser.add_argument("--top-k", type=int, default=5)
+    pipeline_parser.add_argument("--api-key", default=None)
+    pipeline_parser.add_argument("--base-url", default=None)
+    pipeline_parser.add_argument("--model", default="deepseek-ai/DeepSeek-V4-Flash")
+    pipeline_parser.add_argument("--output", default=None)
+    pipeline_parser.add_argument("--verbose", "-v", action="store_true")
+
     return parser
 
 
@@ -73,6 +92,8 @@ def main(argv: list[str] | None = None) -> int:
         return _evaluate_memorybank(args)
     if args.command == "analyze-staleness":
         return _analyze_staleness(args)
+    if args.command == "pipeline":
+        return _run_pipeline(args)
 
     parser.print_help()
     return 0
@@ -113,6 +134,42 @@ def _route_query(args: argparse.Namespace) -> int:
     query_type = router.classify(query)
     view_type = router.route(query.text, query_type)
     print(json.dumps({"query_type": query_type.value, "view": view_type.value}, ensure_ascii=False))
+    return 0
+
+
+def _run_pipeline(args: argparse.Namespace) -> int:
+    """Run the end-to-end memory pipeline on controlled data."""
+    from statebudgetmem.apps.pipeline import build_pipeline
+
+    pipeline = build_pipeline(
+        llm_api_key=args.api_key or os.environ.get("OPENAI_API_KEY"),
+        llm_base_url=args.base_url or os.environ.get("OPENAI_BASE_URL"),
+        llm_model=args.model,
+        use_llm_router=(args.mode == "llm"),
+        top_k=args.top_k,
+    )
+
+    dataset_path = Path(args.dataset)
+    if not dataset_path.exists():
+        print(f"Dataset not found: {dataset_path}")
+        return 1
+
+    count = pipeline.ingest_controlled(str(dataset_path))
+    if args.verbose:
+        print(f"Ingested {count} memories from {dataset_path}")
+
+    result = pipeline.ask(args.query)
+    print(json.dumps(result.to_dict(), ensure_ascii=False, indent=2))
+
+    if args.output:
+        out_path = Path(args.output)
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(
+            json.dumps(result.to_dict(), ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+        print(f"Saved: {out_path}")
+
     return 0
 
 

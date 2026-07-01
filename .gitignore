@@ -231,3 +231,13 @@ dist/
 .pytest_cache/
 .coverage
 htmlcov/
+
+# Project-specific: external dataset
+Memora/
+
+# Project-specific: experiment / tool outputs
+results/
+tools/results/
+
+# Project-specific: routing config may contain user-specific API base/model
+src/statebudgetmem/routing/config.yaml

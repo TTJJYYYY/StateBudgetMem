@@ -13,7 +13,7 @@ llm:
   # OpenAI 兼容的 API 配置 (支持 DeepSeek / Qwen / GLM / OpenAI 等)
   api_key: ""                # 留空则读取环境变量 OPENAI_API_KEY
   base_url: ""               # 留空则读取环境变量 OPENAI_BASE_URL, 再退回 OpenAI 官方
-  model: "gpt-4o-mini"       # 默认模型名 (可改为 deepseek-chat / qwen-plus / glm-4-plus 等)
+  model: "deepseek-ai/DeepSeek-V4-Flash"       # 默认模型名 (可改为 deepseek-chat / qwen-plus / glm-4-plus 等)
   temperature: 0.0           # 分类任务用确定性输出
   max_tokens: 256            # JSON 输出很短, 256 足够
   timeout: 15                # 单次请求超时 (秒)

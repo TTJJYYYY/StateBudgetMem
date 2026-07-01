@@ -7,161 +7,105 @@ StateBudgetMem studies how a long-running personal agent can keep the current
 user state correct, preserve historical versions, avoid stale-memory misuse,
 and retrieve useful memories under storage and context-token budgets.
 
-This repository is the cleaned, structured union of the former `main`,
-`routing`, and `feature/tfidf-baseline-framework` branches. The original demo,
-MemoryBank baseline, controlled datasets, previous results, routing code, and
-versioning implementation are preserved; duplicate v1/v2 files and local IDE
-artifacts are not.
+## Current status (2026-07 updated)
 
-## Current status
+| Stage | Status |
+|-------|--------|
+| Deterministic TF-IDF & MemoryBank baselines | ✅ |
+| Controlled datasets (44 scenarios) | ✅ |
+| State versioning engine (ADD/SUPERSEDE/TEMP_INVALIDATE/RESTORE) | ✅ |
+| Current View & History View | ✅ |
+| Query routing (rule + LLM, 4 types: CURRENT/HISTORICAL/CHANGE/GENERAL) | ✅ |
+| End-to-end pipeline (query → route → view → retrieve) | ✅ |
+| Memora dataset evaluation (10 personas, monthly/weekly) | ✅ |
+| Staleness-aware retrieval & budget selection | 🟡 next |
+| LLM answer generation | 🟡 next |
 
-Implemented:
+### Test coverage: **226 passed** (pytest -q, 6.5s)
 
-- deterministic TF-IDF controlled baseline and 44 controlled scenarios;
-- MemoryBank/FAISS baseline, lightweight agents, Memora adapters, answer
-  evaluation, stale-memory analysis, and full Gradio comparison demo;
-- structured memory preprocessing;
-- state-versioning engine and tests;
-- rule-based and LLM query routing;
-- shared schemas, interfaces, metrics, CLI, and preserved experiment outputs.
+## Quick start
 
-Next major stage:
+```bash
+# Install
+pip install -e ".[test]"
 
-- Current View and History View;
-- a unified end-to-end pipeline;
-- budget-aware selection and final StateBudgetMem visualization.
+# Run all tests
+pytest -q
 
-## Collaboration-oriented structure
+# Pipeline: route a query and retrieve relevant memories (offline)
+statebudgetmem pipeline --query "我现在还喜欢吃辣吗？" -v
+
+# Pipeline with LLM routing
+statebudgetmem pipeline --query "我现在还喜欢吃辣吗？" --mode llm \
+  --api-key "sk-xxx" --base-url "https://api.deepseek.com" --model "deepseek-chat"
+
+# Evaluate routing on all 10 Memora personas
+python tools/routing/eval_on_memora.py --memora-dir Memora --all-personas
+
+# With LLM routing (better accuracy on English Memora questions)
+python tools/routing/eval_on_memora.py --memora-dir Memora --all-personas \
+  --mode llm --model "deepseek-chat"
+```
+
+## Architecture
 
 ```text
-StateBudgetMem/
-├── configs/                         # reproducible experiment configuration
-├── data/
-│   ├── controlled/                  # 12 baseline + 32 temporal scenarios
-│   └── external/memora/             # optional external dataset instructions
-├── docs/
-│   ├── ARCHITECTURE.md              # module boundaries and data flow
-│   ├── TEAM_WORKFLOW.md             # four-person collaboration rules
-│   ├── MIGRATION_FROM_THREE_BRANCHES.md
-│   └── baselines/MEMORYBANK_BASELINE.md
-├── examples/                        # minimal public-API examples
-├── tools/
-│   ├── memorybank/                  # baseline-specific analysis entry points
-│   └── routing/                     # prompt and real-API debugging tools
-├── results/                         # preserved and newly generated outputs
-├── tests/                           # mirrors the source-module structure
-│   ├── baselines/memorybank/
-│   ├── baselines/tfidf/
-│   ├── evaluation/
-│   ├── integration/
-│   ├── routing/
-│   ├── schemas/
-│   └── versioning/
-└── src/statebudgetmem/
-    ├── interfaces.py                # single public contract facade
-    ├── core/                        # shared online/experiment protocols
-    ├── schemas/                     # MemoryRecord, QueryRecord, MethodResult
-    ├── data/                        # controlled-data loading
-    ├── preprocessing/               # dialogue → structured memory
-    ├── baselines/
-    │   ├── memorybank/              # system, agents, data, eval, staleness, demo
-    │   └── tfidf/                   # retriever, adapter, controlled runner
-    ├── versioning/                  # matching, operations, graph, resolver
-    ├── views/                       # Current/History views — next stage
-    ├── routing/                     # rule and LLM routers
-    ├── retrieval/                   # shared Retriever/Embedder protocols
-    ├── evaluation/                  # method-independent retrieval metrics
-    ├── apps/                        # reserved for the final system demo
-    └── cli.py
+user query
+    │
+    ▼
+┌──────────────┐    ┌─────────────────┐    ┌──────────────┐
+│  routing/    │───▶│    views/        │───▶│  retrieval/  │
+│ QueryRouter  │    │ MemoryViewManager│    │ TfidfRetriever│
+│ 4-type class │    │ current+history  │    │   top-k      │
+└──────────────┘    └────────┬────────┘    └──────┬───────┘
+                             │                    │
+                             ▼                    ▼
+                    ┌────────────────┐    ┌──────────────┐
+                    │  versioning/   │    │   context    │
+                    │VersioningEngine│    │  (→ answer)  │
+                    │ SUPERSEDE/     │    └──────────────┘
+                    │ RESTORE/DELETE │
+                    └────────────────┘
 ```
 
-The key rule is: **method-specific code stays together; shared contracts and
-metrics stay method-independent**. Tests mirror the source path, so a module and
-its tests are easy to locate.
+## Module map
 
-## Shared interfaces
-
-All modules use one public import path:
-
-```python
-from statebudgetmem.interfaces import (
-    # Online memory-system layer
-    MemoryPiece,
-    MemorySystem,
-    MemoryType,
-    MemoryStatus,
-    UpdateOperation,
-    VersionManager,
-    ViewManager,
-    QueryRouter,
-    ViewType,
-
-    # Controlled-experiment layer
-    MemoryRecord,
-    QueryRecord,
-    MemoryMethod,
-    MethodResult,
-    QueryType,
-    RetrievedMemory,
-    Scenario,
-)
-```
-
-`MemoryPiece` / `MemorySystem` describe a live memory backend such as
-MemoryBank. `MemoryRecord` / `QueryRecord` / `MemoryMethod` / `MethodResult`
-describe reproducible controlled experiments. These layers are related but not
-duplicates. Do not create private copies of these types inside a feature module.
-
-## Install and verify
-
-```bash
-python -m venv .venv
-# Windows: .venv\Scripts\activate
-# macOS/Linux: source .venv/bin/activate
-python -m pip install -e ".[test]"
-pytest -q
-```
-
-Optional components:
-
-```bash
-python -m pip install -e ".[memorybank]"  # FAISS + embeddings
-python -m pip install -e ".[llm]"         # OpenAI-compatible APIs
-python -m pip install -e ".[demo]"        # MemoryBank + Gradio
-```
+| Module | Location | Description |
+|--------|----------|-------------|
+| `schemas/` | `src/statebudgetmem/schemas/` | MemoryRecord, QueryRecord, Scenario (pydantic v2) |
+| `core/` | `src/statebudgetmem/core/` | Abstract interfaces: MemorySystem, VersionManager, etc. |
+| `versioning/` | `src/statebudgetmem/versioning/` | Version graph, SUPERSEDE/RESTORE, current/history resolution |
+| **`routing/`** | **`src/statebudgetmem/routing/`** | **LLM + rule-based query classification (your module)** |
+| `views/` | `src/statebudgetmem/views/` | Current View + History View built from versioning |
+| `retrieval/` | `src/statebudgetmem/retrieval/` | Shared TF-IDF retriever |
+| `baselines/` | `src/statebudgetmem/baselines/` | MemoryBank, TF-IDF baselines, agents, evaluators |
+| `apps/` | `src/statebudgetmem/apps/` | End-to-end MemoryPipeline |
+| `evaluation/` | `src/statebudgetmem/evaluation/` | Shared metrics (Recall@K, etc.) |
 
 ## Main commands
 
-Controlled TF-IDF baseline:
-
 ```bash
+# Controlled TF-IDF baseline
 statebudgetmem run --config configs/baseline.yaml
-```
 
-Query routing:
-
-```bash
+# Query routing (single query)
 statebudgetmem route "我现在还喜欢吃辣吗？"
-python tools/routing/debug_routing.py --dry-run --query "我的饮食习惯怎么变化的？"
-```
 
-MemoryBank evaluation and stale-memory analysis:
+# Pipeline (end-to-end: route → view → retrieve)
+statebudgetmem pipeline --query "我现在适合吃什么？" -v
+statebudgetmem pipeline --query "我现在适合吃什么？" --mode llm --model "deepseek-chat"
 
-```bash
-statebudgetmem evaluate-memorybank --output results/memorybank/evaluation.json
+# MemoryBank evaluation
+statebudgetmem evaluate-memorybank --output results/memorybank_evaluation.json
 statebudgetmem analyze-staleness --backend tfidf
 
-# Full original-style utilities:
-python tools/memorybank/run_evaluation.py --output results/memorybank/evaluation.json
-python tools/memorybank/analyze_staleness.py --mode demo
-```
+# Memora routing evaluation
+python tools/routing/eval_on_memora.py --memora-dir Memora --persona software_engineer
+python tools/routing/eval_on_memora.py --memora-dir Memora --all-personas --mode llm --model "deepseek-chat"
 
-MemoryBank visual comparison:
+# Debug routing prompts
+python tools/routing/debug_routing.py --dry-run --query "我现在还喜欢吃辣吗？"
 
-```bash
+# Gradio visual comparison (MemoryBank)
 statebudgetmem-demo
 ```
-
-Read [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) before changing shared
-interfaces, and use [`docs/TEAM_WORKFLOW.md`](docs/TEAM_WORKFLOW.md) for team
-coordination.

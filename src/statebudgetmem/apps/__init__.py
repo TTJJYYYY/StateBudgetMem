@@ -1,6 +1,9 @@
-"""Final-system applications.
-
-The current MemoryBank-only comparison demo belongs to its baseline package.
-A future end-to-end StateBudgetMem demo should be added here after views,
-routing, budget selection, and the pipeline are connected.
 """
+StateBudgetMem / Apps
+
+End-to-end agent pipelines and visualization demos.
+"""
+
+from statebudgetmem.apps.pipeline import MemoryPipeline, build_pipeline
+
+__all__ = ["MemoryPipeline", "build_pipeline"]
