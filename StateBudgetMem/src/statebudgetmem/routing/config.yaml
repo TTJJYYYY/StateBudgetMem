@@ -1,0 +1,37 @@
+# ════════════════════════════════════════════════════════════════
+# StateBudgetMem / routing 模块配置
+# ════════════════════════════════════════════════════════════════
+# 本文件由 LLMQueryRouter 在初始化时读取 (可通过 config_path 参数覆盖)。
+# 所有字段均可被构造函数的同名参数显式覆盖, 便于测试与临时调试。
+#
+# 真实运行时, 请把 api_key / base_url / model 替换为你自己的配置,
+# 或通过环境变量 OPENAI_API_KEY / OPENAI_BASE_URL 注入 (见 router.py)。
+# ════════════════════════════════════════════════════════════════
+
+# ── LLM 客户端配置 ──────────────────────────────────────────────
+llm:
+  # OpenAI 兼容的 API 配置 (支持 DeepSeek / Qwen / GLM / OpenAI 等)
+  api_key: ""                # 留空则读取环境变量 OPENAI_API_KEY
+  base_url: ""               # 留空则读取环境变量 OPENAI_BASE_URL, 再退回 OpenAI 官方
+  model: "gpt-4o-mini"       # 默认模型名 (可改为 deepseek-chat / qwen-plus / glm-4-plus 等)
+  temperature: 0.0           # 分类任务用确定性输出
+  max_tokens: 256            # JSON 输出很短, 256 足够
+  timeout: 15                # 单次请求超时 (秒)
+  max_retries: 1             # 失败重试次数 (不含首次)
+
+# ── 路由策略 ────────────────────────────────────────────────────
+routing:
+  # 解析失败 / 超时 / 异常时的降级类型
+  # 可选: current / historical / change / general
+  fallback_type: "general"
+  # 是否在空查询时直接返回 fallback (跳过 LLM 调用, 省钱)
+  empty_query_fallback: true
+  # 是否在日志中打印 LLM 原始返回 (调试用, 生产环境建议 false)
+  log_raw_response: false
+
+# ── Prompt 配置 ─────────────────────────────────────────────────
+prompt:
+  # 是否启用 few-shot 示例 (针对 Memora 长周期状态演进场景调优)
+  enable_few_shot: true
+  # few-shot 示例数量 (从 prompts.py 的 FEW_SHOT_EXAMPLES 中取前 N 条)
+  few_shot_count: 8

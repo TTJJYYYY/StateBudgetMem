@@ -1,0 +1,504 @@
+{
+  "memorybank": {
+    "system": "MemoryBank",
+    "questions": [
+      {
+        "question": "What tasks remain on my todo list this week?",
+        "total_retrieved": 5,
+        "obsolete_count": 5,
+        "current_count": 0,
+        "unknown_count": 0,
+        "omr": 1.0,
+        "cor": 0.0,
+        "retrieved_memories": [
+          "AI: That's good to hear! What kind of things are k",
+          "AI: It sounds like you're tracking your spending w",
+          "AI: That's great you got that done! It's always a ",
+          "AI: Great, glad you got that done! What other task",
+          "AI: Just catching up on some tasks and planning ou"
+        ]
+      },
+      {
+        "question": "What upcoming events do I have in my calendar?",
+        "total_retrieved": 5,
+        "obsolete_count": 5,
+        "current_count": 0,
+        "unknown_count": 0,
+        "omr": 1.0,
+        "cor": 0.0,
+        "retrieved_memories": [
+          "AI: I was wondering if you had any calendar events",
+          "AI: For instance, the lunar calendar significantly",
+          "AI: That's a thought-provoking question; it's alwa",
+          "AI: Certainly, for example, Eid al-Fitr, marking t",
+          "AI: Speaking of security, I have a mechanic visit "
+        ]
+      },
+      {
+        "question": "Write a project proposal for 'Real-Time Order Orchestration Engine with Intelligent Routing'",
+        "total_retrieved": 5,
+        "obsolete_count": 5,
+        "current_count": 0,
+        "unknown_count": 0,
+        "omr": 1.0,
+        "cor": 0.0,
+        "retrieved_memories": [
+          "AI: The title of this project proposal is \"Real-Ti",
+          "AI: This project is about developing a high-perfor",
+          "AI: Speaking of complex frameworks, I need to set ",
+          "AI: The main message is about our team successfull",
+          "AI: What's the title of this project proposal? | A"
+        ]
+      },
+      {
+        "question": "Write an email about: Propose architectural improvements to reduce latency in the autonomous navigation system and request feedback on implementation approach.",
+        "total_retrieved": 5,
+        "obsolete_count": 5,
+        "current_count": 0,
+        "unknown_count": 0,
+        "omr": 1.0,
+        "cor": 0.0,
+        "retrieved_memories": [
+          "AI: I'm writing to propose architectural improveme",
+          "AI: I need to remove some information from the ema",
+          "AI: Okay, I've updated the key points to include t",
+          "AI: The email should be sent to the Infrastructure",
+          "AI: Please review the attached technical proposal "
+        ]
+      },
+      {
+        "question": "Write meeting notes for: Accessibility Compliance Review for VR Navigation Module",
+        "total_retrieved": 5,
+        "obsolete_count": 5,
+        "current_count": 0,
+        "unknown_count": 0,
+        "omr": 1.0,
+        "cor": 0.0,
+        "retrieved_memories": [
+          "AI: The meeting was titled \"Accessibility Complian",
+          "AI: We decided to defer voice command integration ",
+          "AI: The agenda items included addressing performan",
+          "AI: I'm writing to propose architectural improveme",
+          "AI: Are there other fields where VR is being explo"
+        ]
+      },
+      {
+        "question": "What is my total food spending this week?",
+        "total_retrieved": 5,
+        "obsolete_count": 5,
+        "current_count": 0,
+        "unknown_count": 0,
+        "omr": 1.0,
+        "cor": 0.0,
+        "retrieved_memories": [
+          "AI: Thanks for letting me know about your food exp",
+          "AI: I'm really trying to keep my spending in check",
+          "AI: Speaking of daily dynamics, how has your spend",
+          "AI: Thanks for letting me know! How many meals did",
+          "AI: I'm really trying to get my finances in order,"
+        ]
+      },
+      {
+        "question": "How many total steps have I taken this week?",
+        "total_retrieved": 5,
+        "obsolete_count": 5,
+        "current_count": 0,
+        "unknown_count": 0,
+        "omr": 1.0,
+        "cor": 0.0,
+        "retrieved_memories": [
+          "AI: Thanks for letting me know! How many steps did",
+          "AI: That's a great point. Speaking of tracking, ho",
+          "AI: I'm actually really motivated to start walking",
+          "AI: Well, speaking of universal, I actually just h",
+          "AI: Thanks for letting me know! How many meals did"
+        ]
+      },
+      {
+        "question": "Am I meeting my coffee budget goal?",
+        "total_retrieved": 5,
+        "obsolete_count": 5,
+        "current_count": 0,
+        "unknown_count": 0,
+        "omr": 1.0,
+        "cor": 0.0,
+        "retrieved_memories": [
+          "AI: That's quite a bit for a coffee! I can add tha",
+          "AI: It really is! I just spent $7.35 on a coffee, ",
+          "AI: It really depends on the workplace culture; fo",
+          "AI: Speaking of applications, I just spent $3.91 o",
+          "AI: Well, sometimes just taking a moment to pause,"
+        ]
+      },
+      {
+        "question": "Am I meeting my daily step goal?",
+        "total_retrieved": 5,
+        "obsolete_count": 5,
+        "current_count": 0,
+        "unknown_count": 0,
+        "omr": 1.0,
+        "cor": 0.0,
+        "retrieved_memories": [
+          "AI: I'm actually really motivated to start walking",
+          "AI: That's a great point. Speaking of tracking, ho",
+          "AI: Well, speaking of universal, I actually just h",
+          "AI: I understand; sometimes a little treat is just",
+          "AI: That's good to hear! Did you know that breakin"
+        ]
+      },
+      {
+        "question": "How much have I spent on coffee this week?",
+        "total_retrieved": 5,
+        "obsolete_count": 5,
+        "current_count": 0,
+        "unknown_count": 0,
+        "omr": 1.0,
+        "cor": 0.0,
+        "retrieved_memories": [
+          "AI: Speaking of applications, I just spent $3.91 o",
+          "AI: It really depends on the workplace culture; fo",
+          "AI: That's quite a bit for a coffee! I can add tha",
+          "AI: It really is! I just spent $7.35 on a coffee, ",
+          "AI: Well, sometimes just taking a moment to pause,"
+        ]
+      },
+      {
+        "question": "Can you suggest me a movie?",
+        "total_retrieved": 5,
+        "obsolete_count": 5,
+        "current_count": 0,
+        "unknown_count": 0,
+        "omr": 1.0,
+        "cor": 0.0,
+        "retrieved_memories": [
+          "AI: Speaking of cultural touchstones, I just rewat",
+          "AI: That's a fantastic genre! Virtual reality movi",
+          "AI: That's a deep topic! Speaking of things I enjo",
+          "AI: Speaking of direct experience, I've actually u",
+          "AI: Oh, absolutely! I used to be all about action "
+        ]
+      },
+      {
+        "question": "I'm looking for a good book to read. Any suggestions?",
+        "total_retrieved": 5,
+        "obsolete_count": 5,
+        "current_count": 0,
+        "unknown_count": 0,
+        "omr": 1.0,
+        "cor": 0.0,
+        "retrieved_memories": [
+          "AI: Speaking of intricate things, I used to really",
+          "AI: Speaking of deep implications, I've been reall",
+          "AI: That makes a lot of sense! It's why I really l",
+          "AI: That makes sense. Speaking of things I enjoy, ",
+          "AI: Speaking of complex concepts, I was just think"
+        ]
+      },
+      {
+        "question": "What music would you recommend?",
+        "total_retrieved": 5,
+        "obsolete_count": 5,
+        "current_count": 0,
+        "unknown_count": 0,
+        "omr": 1.0,
+        "cor": 0.0,
+        "retrieved_memories": [
+          "AI: It's just too repetitive and the beats don't r",
+          "AI: I think I just outgrew his style; I'm leaning ",
+          "AI: I just love the blend of electronic and pop mu",
+          "AI: That's a really good point. Speaking of things",
+          "AI: It certainly is! I hope you enjoy exploring yo"
+        ]
+      },
+      {
+        "question": "Suggest me a place to visit based on my preferences.",
+        "total_retrieved": 5,
+        "obsolete_count": 4,
+        "current_count": 1,
+        "unknown_count": 0,
+        "omr": 0.8,
+        "cor": 0.2,
+        "retrieved_memories": [
+          "AI: I completely understand; comfort during travel",
+          "AI: Oh, that sounds exciting! Where are you planni",
+          "AI: I completely understand that feeling; there's ",
+          "AI: That sounds like a fun shift in taste! It's al",
+          "AI: I just really don't like being cold or wet, an"
+        ]
+      },
+      {
+        "question": "Can you recommend a movie in genres I enjoy?",
+        "total_retrieved": 5,
+        "obsolete_count": 5,
+        "current_count": 0,
+        "unknown_count": 0,
+        "omr": 1.0,
+        "cor": 0.0,
+        "retrieved_memories": [
+          "AI: Speaking of direct experience, I've actually u",
+          "AI: I understand completely; it's frustrating when",
+          "AI: That's a fantastic genre! Virtual reality movi",
+          "AI: Speaking of interesting things, I've noticed I",
+          "AI: I love the grand scale of the stories, the ima"
+        ]
+      }
+    ],
+    "overall_omr": 0.9866666666666667,
+    "ground_truth_stats": {
+      "total": 1100,
+      "obsolete": 1083,
+      "current": 17
+    }
+  },
+  "tfidf": {
+    "system": "TF-IDF",
+    "questions": [
+      {
+        "question": "What tasks remain on my todo list this week?",
+        "total_retrieved": 5,
+        "obsolete_count": 5,
+        "current_count": 0,
+        "unknown_count": 0,
+        "omr": 1.0,
+        "cor": 0.0,
+        "retrieved_memories": [
+          "AI: What about the recipient list?",
+          "AI: What about the recipient list?",
+          "AI: I'd like to remove \"Setup home network securit",
+          "AI: Sounds like a plan! What else is on your to-do",
+          "AI: I'm really trying to keep my spending in check"
+        ]
+      },
+      {
+        "question": "What upcoming events do I have in my calendar?",
+        "total_retrieved": 5,
+        "obsolete_count": 5,
+        "current_count": 0,
+        "unknown_count": 0,
+        "omr": 1.0,
+        "cor": 0.0,
+        "retrieved_memories": [
+          "AI: It sounds like you're interested in the layers",
+          "AI: I was wondering if you had any calendar events",
+          "AI: What kind of impact do you think AI could have",
+          "AI: Hello! I can certainly try my best to help you",
+          "AI: That's really interesting. What kind of histor"
+        ]
+      },
+      {
+        "question": "Write a project proposal for 'Real-Time Order Orchestration Engine with Intelligent Routing'",
+        "total_retrieved": 5,
+        "obsolete_count": 5,
+        "current_count": 0,
+        "unknown_count": 0,
+        "omr": 1.0,
+        "cor": 0.0,
+        "retrieved_memories": [
+          "AI: The title of this project proposal is \"Real-Ti",
+          "AI: I need to remove some information from the pro",
+          "AI: I need to remove some information from the pro",
+          "AI: The project proposal is titled \"Real-Time Spat",
+          "AI: I need to update the project proposal titled '"
+        ]
+      },
+      {
+        "question": "Write an email about: Propose architectural improvements to reduce latency in the autonomous navigation system and request feedback on implementation approach.",
+        "total_retrieved": 5,
+        "obsolete_count": 5,
+        "current_count": 0,
+        "unknown_count": 0,
+        "omr": 1.0,
+        "cor": 0.0,
+        "retrieved_memories": [
+          "AI: I'm writing to propose architectural improveme",
+          "AI: I need to remove some information from the ema",
+          "AI: I need to update the email titled 'Propose arc",
+          "AI: I need to add some information for an email wr",
+          "AI: Yes, I can help you organize the information f"
+        ]
+      },
+      {
+        "question": "Write meeting notes for: Accessibility Compliance Review for VR Navigation Module",
+        "total_retrieved": 5,
+        "obsolete_count": 5,
+        "current_count": 0,
+        "unknown_count": 0,
+        "omr": 1.0,
+        "cor": 0.0,
+        "retrieved_memories": [
+          "AI: The meeting was titled \"Accessibility Complian",
+          "AI: I need to remove some information from my meet",
+          "AI: Okay, Project \"Accessibility Compliance Review",
+          "AI: I need to update the meeting notes titled 'Acc",
+          "AI: Great, I can help you add new meeting notes."
+        ]
+      },
+      {
+        "question": "What is my total food spending this week?",
+        "total_retrieved": 5,
+        "obsolete_count": 5,
+        "current_count": 0,
+        "unknown_count": 0,
+        "omr": 1.0,
+        "cor": 0.0,
+        "retrieved_memories": [
+          "AI: It's been a good week for food spending.",
+          "AI: Thanks for sharing! How has your food spending",
+          "AI: I'm really trying to keep my spending in check",
+          "AI: Speaking of daily dynamics, how has your spend",
+          "AI: I'm really trying to cut back on my coffee spe"
+        ]
+      },
+      {
+        "question": "How many total steps have I taken this week?",
+        "total_retrieved": 5,
+        "obsolete_count": 5,
+        "current_count": 0,
+        "unknown_count": 0,
+        "omr": 1.0,
+        "cor": 0.0,
+        "retrieved_memories": [
+          "AI: Sounds like you're keeping track of your food ",
+          "AI: Thanks for letting me know! How many steps did",
+          "AI: Thanks for letting me know! How many steps did",
+          "AI: That's a great point. Speaking of tracking, ho",
+          "AI: That's fascinating! Speaking of daily activiti"
+        ]
+      },
+      {
+        "question": "Am I meeting my coffee budget goal?",
+        "total_retrieved": 5,
+        "obsolete_count": 5,
+        "current_count": 0,
+        "unknown_count": 0,
+        "omr": 1.0,
+        "cor": 0.0,
+        "retrieved_memories": [
+          "AI: I'm really trying to cut back on my coffee spe",
+          "AI: What's the proposed budget for this project?",
+          "AI: What's the proposed budget for this project?",
+          "AI: That's a fantastic financial goal! Setting a s",
+          "AI: I actually had to reschedule my mechanic visit"
+        ]
+      },
+      {
+        "question": "Am I meeting my daily step goal?",
+        "total_retrieved": 5,
+        "obsolete_count": 5,
+        "current_count": 0,
+        "unknown_count": 0,
+        "omr": 1.0,
+        "cor": 0.0,
+        "retrieved_memories": [
+          "AI: That's an excellent goal for managing your fin",
+          "AI: That's a fantastic financial goal! Tracking yo",
+          "AI: That's a fantastic financial goal! Setting a s",
+          "AI: I actually had to reschedule my mechanic visit",
+          "AI: That's a fantastic fitness goal! I can definit"
+        ]
+      },
+      {
+        "question": "How much have I spent on coffee this week?",
+        "total_retrieved": 5,
+        "obsolete_count": 5,
+        "current_count": 0,
+        "unknown_count": 0,
+        "omr": 1.0,
+        "cor": 0.0,
+        "retrieved_memories": [
+          "AI: I just spent $8.13 on coffee.",
+          "AI: I actually just spent $8.48 on coffee this mor",
+          "AI: Speaking of applications, I just spent $3.91 o",
+          "AI: Well, sometimes just taking a moment to pause,",
+          "AI: It really is! I just spent $7.35 on a coffee, "
+        ]
+      },
+      {
+        "question": "Can you suggest me a movie?",
+        "total_retrieved": 5,
+        "obsolete_count": 5,
+        "current_count": 0,
+        "unknown_count": 0,
+        "omr": 1.0,
+        "cor": 0.0,
+        "retrieved_memories": [
+          "AI: That's really interesting! Can you tell me mor",
+          "AI: That's an interesting thought! Some researcher",
+          "AI: Speaking of cultural touchstones, I just rewat",
+          "AI: Could you give me an analogy or a similar exam",
+          "AI: That makes sense. Could you give me an analogy"
+        ]
+      },
+      {
+        "question": "I'm looking for a good book to read. Any suggestions?",
+        "total_retrieved": 5,
+        "obsolete_count": 5,
+        "current_count": 0,
+        "unknown_count": 0,
+        "omr": 1.0,
+        "cor": 0.0,
+        "retrieved_memories": [
+          "AI: Hello to you too! I'm doing well, just looking",
+          "AI: Hello there! I'm doing well, thank you. I'm ju",
+          "AI: Hi there! I'm doing well, just looking to chat",
+          "AI: Hi there! I'm doing well, just looking to chat",
+          "AI: Yeah, it really helps to understand the nuance"
+        ]
+      },
+      {
+        "question": "What music would you recommend?",
+        "total_retrieved": 5,
+        "obsolete_count": 5,
+        "current_count": 0,
+        "unknown_count": 0,
+        "omr": 1.0,
+        "cor": 0.0,
+        "retrieved_memories": [
+          "AI: Are there any particular settings or apps you ",
+          "AI: I understand! It sounds like you'd like to rem",
+          "AI: Yes, there are similar distinctions in music c",
+          "AI: That's a really interesting comparison. So, wh",
+          "AI: That's cool! What about 2010s music resonates "
+        ]
+      },
+      {
+        "question": "Suggest me a place to visit based on my preferences.",
+        "total_retrieved": 5,
+        "obsolete_count": 5,
+        "current_count": 0,
+        "unknown_count": 0,
+        "omr": 1.0,
+        "cor": 0.0,
+        "retrieved_memories": [
+          "AI: Speaking of powerful combinations, I've always",
+          "AI: I actually had to reschedule my mechanic visit",
+          "AI: Did you know that some companies are already u",
+          "AI: I just really don't like being cold or wet, an",
+          "AI: Thanks for the chat about organization and pre"
+        ]
+      },
+      {
+        "question": "Can you recommend a movie in genres I enjoy?",
+        "total_retrieved": 5,
+        "obsolete_count": 5,
+        "current_count": 0,
+        "unknown_count": 0,
+        "omr": 1.0,
+        "cor": 0.0,
+        "retrieved_memories": [
+          "AI: Are there any particular settings or apps you ",
+          "AI: That's a great question; I always enjoy our co",
+          "AI: Hi! What kind of things do you enjoy talking a",
+          "AI: That's great! What is it about space opera tha",
+          "AI: It's great to hear that! It sounds like you en"
+        ]
+      }
+    ],
+    "overall_omr": 1.0,
+    "ground_truth_stats": {
+      "total": 2537,
+      "obsolete": 2483,
+      "current": 54
+    }
+  }
+}

@@ -1,0 +1,57 @@
+[project]
+name = "statebudgetmem"
+version = "0.5.0"
+description = "Temporally consistent, budget-aware long-term memory for on-device agents."
+requires-python = ">=3.11"
+dependencies = [
+    "pydantic>=2,<3",
+    "PyYAML>=6,<7",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest>=8,<9",
+]
+llm = [
+    "openai>=1,<3",
+]
+memorybank = [
+    "numpy>=1.26",
+    "faiss-cpu>=1.8",
+    "scikit-learn>=1.4",
+    "sentence-transformers>=3",
+]
+demo = [
+    "openai>=1,<3",
+    "numpy>=1.26",
+    "faiss-cpu>=1.8",
+    "scikit-learn>=1.4",
+    "sentence-transformers>=3",
+    "gradio>=5,<7",
+]
+all = [
+    "openai>=1,<3",
+    "numpy>=1.26",
+    "faiss-cpu>=1.8",
+    "scikit-learn>=1.4",
+    "sentence-transformers>=3",
+    "gradio>=5,<7",
+]
+
+[project.scripts]
+statebudgetmem = "statebudgetmem.cli:main"
+statebudgetmem-demo = "statebudgetmem.baselines.memorybank.demo:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"statebudgetmem.routing" = ["config.yaml", "README.md"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
