@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 
-from statebudgetmem.baselines.interfaces import MemoryType, UpdateOperation
+from statebudgetmem.interfaces import MemoryType, UpdateOperation
 from statebudgetmem.preprocessing.models import ParsedMemory, RawMessage, parse_timestamp
 from statebudgetmem.preprocessing.normalizer import (
     canonical_attribute,
