@@ -2,7 +2,7 @@
 StateBudgetMem — 统一接口规范
 
 本模块定义了记忆系统的抽象接口和数据格式，所有子模块（baselines / versioning / views / routing）
-必须遵循这些接口进行实现和对接。
+必须遵循这些接口进行实现和对接。版本操作及 VersionManager 契约由 versioning 模块统一提供。
 
 设计参考：
 - MemoryBank (AAAI-24): 艾宾浩斯遗忘曲线 + 向量检索
@@ -16,6 +16,7 @@ from typing import List, Dict, Optional, Tuple, Any
 from enum import Enum
 
 from statebudgetmem.schemas.records import QueryType
+from statebudgetmem.versioning.contracts import UpdateOperation, VersionManager
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -39,20 +40,6 @@ class MemoryStatus(Enum):
     TEMP_INVALID = "temp_invalid"   # 暂时失效（条件性失效）
     DELETED = "deleted"             # 已删除
     CONFLICTING = "conflicting"     # 存在冲突，待解决
-
-
-class UpdateOperation(Enum):
-    """记忆更新操作类型 —— 参考 Mem0 的 Tool Call 设计"""
-    ADD = "add"                     # 新增记忆
-    UPDATE = "update"               # 更新现有记忆（补充信息）
-    DELETE = "delete"               # 删除记忆
-    NOOP = "noop"                   # 无操作
-    MERGE = "merge"                 # 合并两条记忆
-    SUPERSEDE = "supersede"         # 替代（旧记忆标记为 SUPERSEDED）
-    TEMP_INVALIDATE = "temp_invalidate"  # 暂时失效
-    RESTORE = "restore"             # 恢复失效记忆
-
-
 
 
 class ViewType(Enum):
@@ -183,7 +170,7 @@ class MemorySystem(ABC):
 
         参考 Mem0 的两阶段流水线：
         1. 提取阶段：从 messages 中提取候选记忆
-        2. 更新阶段：判断每条候选记忆的操作类型（ADD/UPDATE/DELETE/NOOP）
+        2. 更新阶段：判断每条候选记忆的操作类型（ADD/MERGE/DELETE/NOOP 等）
 
         Args:
             messages: [(role, content, timestamp), ...]
@@ -222,9 +209,9 @@ class MemorySystem(ABC):
 
         Args:
             memory_id: 目标记忆ID
-            operation: 操作类型（ADD/UPDATE/DELETE/SUPERSEDE/TEMP_INVALIDATE/RESTORE）
+            operation: 统一版本操作类型（ADD/MERGE/DELETE/SUPERSEDE/TEMP_INVALIDATE/RESTORE/NOOP）
             **kwargs: 额外参数
-                - new_content: UPDATE 时的新内容
+                - new_content: MERGE 时用于补充已有记忆的新内容
                 - new_memory_id: SUPERSEDE 时的新记忆ID
                 - reason: 操作原因
                 - validity_end: TEMP_INVALIDATE 时的失效截止时间
@@ -271,35 +258,6 @@ class MemorySystem(ABC):
 # ═══════════════════════════════════════════════════════════════
 # 辅助接口：其他模块需要实现的抽象类
 # ═══════════════════════════════════════════════════════════════
-
-class VersionManager(ABC):
-    """
-    版本管理器 —— versioning 模块实现
-
-    负责判断新记忆与旧记忆的关系，执行版本操作。
-    """
-
-    @abstractmethod
-    def classify_relationship(self, new_memory: MemoryPiece,
-                              existing_memories: List[MemoryPiece]) -> UpdateOperation:
-        """
-        判断新记忆与现有记忆的关系
-
-        Returns:
-            ADD / UPDATE / DELETE / SUPERSEDE / MERGE / NOOP
-        """
-        pass
-
-    @abstractmethod
-    def build_version_chain(self, memory_id: str) -> List[MemoryPiece]:
-        """构建某条记忆的版本链（从最早到最新）"""
-        pass
-
-    @abstractmethod
-    def detect_conflicts(self, memory: MemoryPiece) -> List[MemoryPiece]:
-        """检测与给定记忆冲突的其他记忆"""
-        pass
-
 
 class ViewManager(ABC):
     """

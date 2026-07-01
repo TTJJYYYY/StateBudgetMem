@@ -1,5 +1,9 @@
 from pathlib import Path
 
+from statebudgetmem.core.online import (
+    UpdateOperation as OnlineUpdateOperation,
+    VersionManager as OnlineVersionManager,
+)
 from statebudgetmem.interfaces import (
     MemoryMethod,
     MemoryPiece,
@@ -9,7 +13,12 @@ from statebudgetmem.interfaces import (
     QueryRecord,
     QueryType,
     UpdateOperation,
+    VersionManager,
     ViewType,
+)
+from statebudgetmem.versioning import (
+    UpdateOperation as VersioningUpdateOperation,
+    VersionManager as VersioningVersionManager,
 )
 
 
@@ -39,4 +48,8 @@ def test_public_interface_facade_contains_both_contract_layers() -> None:
     assert MethodResult is not None
     assert QueryType.GENERAL.name == "GENERAL"
     assert ViewType.NONE.value == "none"
-    assert UpdateOperation.SUPERSEDE.value == "supersede"
+    assert UpdateOperation.SUPERSEDE.value == "SUPERSEDE"
+    assert UpdateOperation("supersede") is UpdateOperation.SUPERSEDE
+    assert UpdateOperation("UPDATE") is UpdateOperation.MERGE
+    assert OnlineUpdateOperation is UpdateOperation is VersioningUpdateOperation
+    assert OnlineVersionManager is VersionManager is VersioningVersionManager
