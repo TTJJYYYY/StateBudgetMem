@@ -1,168 +1,288 @@
-# MemoryBank 长期记忆管理 — 复现与评测
+# StateBudgetMem
 
-基于论文 ["MemoryBank: Enhancing Large Language Models with Long-Term Memory" (AAAI-24)](https://ojs.aaai.org/index.php/AAAI/article/view/29946) 的复现实现，支持外部评测数据集，采用 LLM-as-Judge 评分机制。
+**资源受限端侧个人智能体的时态一致性长期记忆管理**  
+*Temporally Consistent Long-Term Memory for Resource-Constrained On-Device Personal Agents*
+
+## 项目简介
+
+长期运行的个人智能体会持续积累用户偏好、健康状态、居住地点和任务目标等信息。当这些信息发生变化时，普通语义检索可能同时取回当前状态和已经过期的历史记忆，从而导致错误回答。
+
+本项目研究：
+
+- 如何表示用户状态的更新、替代和临时失效；
+- 如何区分当前有效状态与历史版本；
+- 如何根据问题类型选择正确的记忆；
+- 如何在有限存储、token 和检索延迟下完成记忆管理。
+
+项目当前处于**研究工程与基础基线阶段**。现已完成确定性的离线 TF-IDF 检索基线和统一方法接口 v0.1；MemoryBank、版本管理、双视图和查询路由仍在后续开发中。
+
+---
+
+## 当前已完成
+
+- `MemoryRecord`、`QueryRecord`、`Scenario` 公共数据结构；
+- 受控状态变化数据；
+- TF-IDF + Cosine Similarity Top-K 检索；
+- Recall@K、Valid Recall@K、Stale Retrieval Rate；
+- 检索 token 成本与检索延迟统计；
+- CLI 实验入口与 JSON/CSV 结果保存；
+- 统一方法接口：`reset()`、`ingest()`、`retrieve()`；
+- 统一输出结构：`RetrievedMemory`、`MethodResult`；
+- TF-IDF Adapter 与自动化测试。
+
+当前实现不代表完整的 StateBudgetMem 方法，也不包含正式的 LLM 回答生成、MemoryBank 接入、版本推断、双视图路由或预算优化。
+
+---
+
+## 四条研究路线
+
+项目第一阶段按照四个模块并行开发。四个文件夹对应四条研究路线，但最终会组合成同一个系统。
+
+### `baselines/`：基础记忆系统与对照基线
+
+负责：
+
+- 维护现有 TF-IDF 基线；
+- 整理并接入 MemoryBank；
+- 实现语义相关性、时间衰减、重要性和记忆强化等基础机制；
+- 在相同数据和指标下比较 TF-IDF 与 MemoryBank。
+
+目的：建立可靠对照组，观察普通语义检索和传统长期记忆方法是否会取回过期记忆。
+
+主要参考：MemoryBank、Generative Agents、Mem0。
+
+### `versioning/`：状态版本管理
+
+负责：
+
+- 判断新旧记忆之间的关系；
+- 实现 `ADD`、`MERGE`、`SUPERSEDE`、`TEMP_INVALIDATE`、`DELETE`、`NOOP`；
+- 维护有效时间、当前状态和历史版本；
+- 构建用户状态变化链。
+
+目的：让系统知道哪条记忆当前有效，哪条已经被替代、失效或暂时覆盖。
+
+主要参考：A-MEM、Mem0、STALE、MemConflict。
+
+### `views/`：当前状态与历史版本双视图
+
+负责：
+
+- 构建 `Current View`，保存当前有效状态；
+- 构建 `History View`，保存完整历史版本；
+- 维护和检索两个视图；
+- 比较统一记忆库、仅当前状态和双视图三种方案。
+
+目的：减少旧记忆对当前问题的干扰，同时保留历史状态与变化过程的查询能力。
+
+主要参考：LongMemEval、MemConflict、A-MEM。
+
+### `routing/`：查询分类与记忆路由
+
+负责：
+
+- 分类 `CURRENT`、`HISTORICAL`、`CHANGE`、`GENERAL`；
+- 根据查询类型选择当前视图、历史视图、两个视图或不检索个人记忆；
+- 判断记忆对当前问题是否适用；
+- 评测查询分类准确率和不必要检索率。
+
+目的：把版本管理和双视图串成完整的时态一致性检索流程。
+
+主要参考：MemConflict、LongMemEval、STALE、Memora。
+
+四条路线的组合关系为：
+
+```text
+基础记忆与基线
+        ↓
+状态版本管理
+        ↓
+当前 / 历史双视图
+        ↓
+查询分类与路由
+        ↓
+完整 StateBudgetMem
+```
+
+---
+
+## 统一开发接口
+
+四个模块可以采用不同算法，但必须共用统一的数据、调用方式和结果格式。
+
+### 公共输入
+
+- `MemoryRecord`：一条记忆；
+- `QueryRecord`：一个问题；
+- `Scenario`：一组记忆及其对应问题。
+
+禁止在各模块中重新定义另一套 Memory、Query 或 Scenario。
+
+### 公共调用方式
+
+所有可比较方法最终需要支持：
+
+```python
+method.reset()
+method.ingest(memories)
+result = method.retrieve(
+    query,
+    top_k=3,
+    token_budget=None,
+    mutate=False,
+)
+```
+
+### 公共输出
+
+所有方法返回 `MethodResult`，其中包含：
+
+- 检索到的记忆 ID；
+- 分数和排名；
+- 记忆来源视图；
+- 可选的查询类型预测；
+- 总 token 成本；
+- 检索延迟。
+
+完整规范见 [`docs/UNIFIED_SPEC.md`](docs/UNIFIED_SPEC.md)。
 
 ---
 
 ## 项目结构
 
+```text
+StateBudgetMem/
+├── configs/                         # 实验配置
+├── data/controlled/                 # 自建受控数据
+├── docs/                            # 研究路线、任务文档和统一规范
+├── results/                         # 原始结果与汇总结果
+├── src/statebudgetmem/
+│   ├── baselines/                   # 路线一：基础基线与 MemoryBank
+│   ├── versioning/                  # 路线二：状态版本管理
+│   ├── views/                       # 路线三：当前 / 历史双视图
+│   ├── routing/                     # 路线四：查询分类与路由
+│   ├── core/                        # 公共方法接口
+│   ├── schemas/                     # 公共数据与结果结构
+│   ├── retrieval/                   # 当前 TF-IDF 检索实现
+│   ├── evaluation/                  # 公共评测指标
+│   ├── experiments/                 # 实验流程
+│   └── cli.py                       # 命令行入口
+├── tests/                           # 自动化测试
+├── AGENTS.md                        # Codex 开发约束
+├── pyproject.toml
+└── README.md
 ```
-├── memorybank.py          # MemoryBank 核心实现（存储 / 检索 / 遗忘）
-├── evaluation_v2.py       # 对比实验框架 + Memora 数据集加载
-├── evaluation_results_*.json   # 各 persona 的评测结果
-├── evaluation_results.json     # 汇总结果
-└── README.md              # 本文档
-```
-
-> `evaluation.py` 为早期版本，已废弃，请使用 `evaluation_v2.py`。
 
 ---
 
-## 环境依赖
+## 数据集
+
+当前仓库包含两套受控数据：
+
+```text
+data/controlled/baseline_scenarios.jsonl
+data/controlled/temporal_challenge_v1.jsonl
+```
+
+- `baseline_scenarios.jsonl`：用于快速验证数据加载、检索、指标和结果输出；
+- `temporal_challenge_v1.jsonl`：用于测试状态更新、历史版本、过期记忆和时态问题。
+
+公开数据集 Memora 暂时作为本地外部数据保存，待四个模块初步合并后再统一适配和评测。
+
+---
+
+## 安装
+
+需要 Python 3.11 或更高版本。
 
 ```bash
-pip install numpy faiss-cpu sentence-transformers openai
+python -m pip install -e ".[test]"
 ```
 
-- `faiss-cpu`：向量检索（有 GPU 可换 `faiss-gpu`）
-- `sentence-transformers`：文本 Embedding（默认 `all-MiniLM-L6-v2`）
-- `openai`：调用 DeepSeek API
-- Python >= 3.10
+当前基础运行依赖为 `pydantic`。TF-IDF 检索器使用 Python 标准库实现，可完全离线运行。
 
 ---
 
-## 快速开始
-
-### 1. 配置 DeepSeek API Key
-
-打开 `evaluation_v2.py`，找到以下行并填入你的 API Key：
-
-```python
-llm = DeepSeekLLM(api_key="sk-你的API密钥")
-```
-
-### 2. 准备数据集（Memora）
+## 运行基础实验
 
 ```bash
-git clone https://github.com/geniesinc/Memora.git
+python -m statebudgetmem.cli run --config configs/baseline.yaml
 ```
 
-确保 `Memora/data/` 目录存在，结构如下：
+实验结果保存至：
 
-```
-Memora/data/
-├── weekly/
-│   ├── software_engineer/
-│   │   ├── conversations/
-│   │   └── evaluation_questions_software_engineer.json
-│   ├── academic_researcher/
-│   └── ...
-├── monthly/
-└── quarterly/
+```text
+results/raw/<run_id>.jsonl
+results/summaries/<run_id>.json
+results/summaries/<run_id>.csv
 ```
 
-### 3. 运行评测
+---
+
+## 运行测试
 
 ```bash
-python evaluation_v2.py
+pytest -q
 ```
 
-程序会自动：
-1. 加载指定 persona 的对话历史和评测问题
-2. 分别用基线 Agent（无记忆）和 MemoryBank Agent（有记忆）回答
-3. 使用 LLM-as-Judge 对回答质量打分
-4. 汇总所有 persona 的结果
+---
+
+## 第一阶段对比目标
+
+后续将逐步比较：
+
+```text
+TF-IDF
+→ MemoryBank
+→ Version-Aware
+→ Version-Aware + Dual View
+→ Version-Aware + Dual View + Query Routing
+```
+
+共同评价指标包括：
+
+- Recall@K；
+- Valid Recall@K；
+- Stale Retrieval Rate；
+- 总检索 token 成本；
+- 检索延迟。
+
+各模块还可增加自己的专项指标，但不得改变公共指标定义。
 
 ---
 
-## 核心机制
+## 协作规则
 
-### MemoryBank 模块（`memorybank.py`）
+建议四个方向分别使用功能分支：
 
-| 论文机制 | 代码实现 |
-|---------|---------|
-| 记忆存储（三层结构） | `MemoryPiece` + 类型标记（dialog / summary / portrait） |
-| 向量检索 | `FAISS IndexFlatIP` + `sentence-transformers` Embedding |
-| 艾宾浩斯遗忘曲线 | `update_forgetting()` 中 `R = e^(-t/S)` |
-| Spacing Effect | 检索时 `strength += 1`，被回忆的记忆更持久 |
-| 增强 Prompt | `build_augmented_prompt()` 整合记忆 + 画像 + 摘要 |
-| Agent 封装 | `MemoryAugmentedAgent` / `BaselineAgent` |
+```text
+feature/memorybank-baseline
+feature/state-versioning
+feature/dual-view
+feature/query-routing
+```
 
-### 评测框架（`evaluation_v2.py`）
+公共区域包括：
 
-| 特性 | 说明 |
-|------|------|
-| **数据集支持** | Memora（已适配）、LongMemEval / STALE / MemConflict（预留接口） |
-| **批量评测** | 支持一次跑多个 persona，自动汇总 |
-| **LLM-as-Judge** | 用 DeepSeek 评判回答是否准确利用了历史记忆，替代粗糙的关键词匹配 |
-| **评分标准** | 0 = 完全错误 / 编造；0.1-0.3 = 几乎未利用历史记忆；0.7-0.9 = 基本正确；1.0 = 完全准确 |
+```text
+src/statebudgetmem/schemas/
+src/statebudgetmem/core/
+src/statebudgetmem/evaluation/
+src/statebudgetmem/experiments/
+src/statebudgetmem/cli.py
+pyproject.toml
+```
 
----
-
-## 实验结果
-
-使用 **Memora** 数据集 `weekly` 子集，在 5 个不同 persona 上进行评测（共 75 题）。
-
-| Persona | 基线均分 | MemoryBank | 提升幅度 | MemoryBank 答对 |
-|---------|---------|-----------|---------|----------------|
-| software_engineer | 0.080 | 0.333 | 316.7% | 2/15 |
-| academic_researcher | 0.107 | 0.287 | 168.7% | 2/15 |
-| business_executive | 0.087 | 0.173 | 100.0% | 0/15 |
-| financial_analyst | 0.087 | 0.253 | 192.3% | 2/15 |
-| startup_founder | 0.100 | 0.127 | 26.7% | 0/15 |
-| **总计** | **0.092** | **0.235** | **155.1%** | **6/75** |
-
-### 按任务类型分析
-
-| 任务类型 | 基线均分 | MemoryBank | 说明 |
-|---------|---------|-----------|------|
-| **remembering** | ~0.08 | ~0.16 | **核心优势**。事实回忆精准，向量检索能匹配语义相关的历史记忆 |
-| **recommending** | ~0.10 | ~0.84 | **显著提升**。能基于用户历史偏好给出个性化推荐（如电影、书籍），基线只能给出通用建议 |
-| **reasoning** | ~0.06 | ~0.14 | **表现有限**。涉及计算和综合推理时，单纯检索记忆片段不足以完成任务 |
-
-### 关键发现
-
-1. **MemoryBank 在个性化推荐上效果显著**：基线只能给出"请告诉我你的喜好"这类通用回复，MemoryBank 能基于历史对话精准推荐（如"你喜欢《火星救援》，推荐《星际穿越》"）。
-2. **事实回忆是稳定优势**：在 remember 类任务上 consistently 优于基线。
-3. **推理能力是短板**：需要计算总和、汇总多日数据等推理任务，MemoryBank 无法自动完成。这说明**记忆管理和推理能力是两个不同的问题**。
-
----
-
-## 已知局限
-
-1. **缺乏主动过期检测**
-   - 当前 MemoryBank 不会主动识别"旧记忆已失效"
-   - 例如用户从"喜欢川菜"改为"清淡饮食"，系统可能同时召回新旧两种偏好
-   - **改进方向**：参考 Memora / STALE 论文，加入记忆冲突检测和过期标记
-
-2. **检索质量依赖 Embedding 模型**
-   - 短查询 + 长记忆的场景下，纯语义相似度检索召回率不足
-   - **改进方向**：引入关键词硬匹配辅助，或调整检索策略
-
-3. **无法完成计算型推理**
-   - 能检索到"花了 $7.35 买咖啡"，但不会自动计算"本周咖啡总支出"
-   - 这是记忆模块的设计边界，需结合更强的推理模块解决
-
-4. **端侧适配未实现**
-   - 当前使用云端 DeepSeek API，未涉及端侧模型部署
-   - **改进方向**：结合 llama.cpp 等端侧推理框架，配合第 11 篇论文（Budget-Curated Memory）进行记忆预算管理
-
----
-
-## 参考文献
-
-1. **MemoryBank** (AAAI-24): Zhong et al. *MemoryBank: Enhancing Large Language Models with Long-Term Memory*
-2. **Memora** (arXiv 2026): *From Recall to Forgetting: Benchmarking Long-Term Memory for Personalized Agents* — 数据集来源
-3. **LongMemEval** (ICLR 2025): *LongMemEval: Benchmarking Chat Assistants on Long-Term Interactive Memory*
-4. **STALE** (arXiv 2026): *Can LLM Agents Know When Their Memories Are No Longer Valid?*
-5. **MemConflict** (arXiv 2026): *Evaluating Long-Term Memory Systems Under Memory Conflicts*
-6. **Forget to Improve** (arXiv 2026): *On-Device LLM-Agent Continual Learning via Budget-Curated Memory* — 端侧预算管理
+修改公共区域前需要先进行组内沟通。各成员应优先在自己负责的模块中开发，并通过 Pull Request 合并。
 
 ---
 
 ## 后续计划
 
-- [ ] 过期记忆检测模块（冲突识别 + 旧记忆标记）
-- [ ] 端侧部署适配（llama.cpp + 轻量模型）
-- [ ] Gradio 交互式 Demo
-- [ ] 支持更多评测数据集（LongMemEval / STALE / MemConflict）
+1. 接入 MemoryBank 基线；
+2. 实现状态版本更新操作；
+3. 构建当前状态与历史版本双视图；
+4. 实现查询分类与视图路由；
+5. 统一接入 Memora 等公开数据集；
+6. 加入 token / 存储预算检索；
+7. 完成消融、压力测试、端侧性能测试和研究展示。
