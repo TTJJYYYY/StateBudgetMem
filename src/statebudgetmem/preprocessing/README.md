@@ -15,7 +15,7 @@ preprocessing
       ↓
 StructuredMemory
       ↓
-MemoryRecord / Scenario
+MemoryPiece
       ↓
 baselines / versioning / views
 ```
@@ -156,7 +156,7 @@ from statebudgetmem.preprocessing import MemoryPreprocessor, RawMemoryInput, Pre
 额外预处理信息存入：
 
 ```python
-MemoryRecord.metadata
+MemoryPiece 的 tags / source / confidence / query_types 等字段
 ```
 
 当前约定字段：
