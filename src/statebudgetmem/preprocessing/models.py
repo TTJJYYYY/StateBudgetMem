@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Iterable, Optional, Tuple
 
-from statebudgetmem.preprocessing.compat import (
+from statebudgetmem.interfaces import (
     MemoryPiece,
     MemoryStatus,
     MemoryType,

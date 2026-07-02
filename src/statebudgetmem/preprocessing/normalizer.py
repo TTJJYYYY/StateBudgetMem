@@ -49,7 +49,7 @@ def normalize_text(text: str) -> str:
         cleaned = cleaned.replace(filler, "")
 
     cleaned = _SPACE_RE.sub(" ", cleaned)
-    return cleaned.strip(" ,，.;；!?！？")
+    return cleaned.strip(" ,，.;；!?！？。")
 
 
 def split_clauses(text: str) -> list[str]:
@@ -84,8 +84,7 @@ def clean_value(value: str | None) -> str:
     value = re.sub(r"^(是|为|在|到|成|去|了|改成|改为|换成)", "", value)
     value = re.sub(r"(了|啦|呢|。)$", "", value)
 
-    return value.strip(" ,，.;；!?！？") or "unknown"
-
+    return value.strip(" ,，.;；!?！？。") or "unknown"
 
 def canonical_attribute(attribute: str) -> str:
     attribute = normalize_text(attribute)
