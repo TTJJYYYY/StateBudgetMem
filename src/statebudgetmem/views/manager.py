@@ -13,17 +13,16 @@ from statebudgetmem.views.selectors import (
     current_memory_ids,
     history_memory_ids,
     ordered_records_by_ids,
+    point_in_time_memory_ids,
     records_by_id,
 )
 
 
 class RecordViewManager:
-    """Maintain Current View and History View for controlled experiments.
+    """Maintain query-aware Current and History views.
 
-    This manager uses the public MemoryRecord schema and the existing
-    VersioningEngine. It does not duplicate versioning rules; it only asks
-    versioning which memory IDs are current or historical, then maps them
-    back to records for retrieval.
+    The manager delegates all temporal semantics to ``VersioningEngine`` and
+    only maps resolved memory IDs back to public ``MemoryRecord`` objects.
     """
 
     def __init__(
@@ -52,7 +51,10 @@ class RecordViewManager:
 
     def ingest(self, memories: Iterable[MemoryRecord]) -> None:
         self.reset()
-        self._memories = sorted(list(memories), key=lambda item: (item.event_time, item.memory_id))
+        self._memories = sorted(
+            list(memories),
+            key=lambda item: (item.event_time, item.memory_id),
+        )
         self._memories_by_id = records_by_id(self._memories)
         self.version_manager.ingest_many(self._memories, sort_by_event_time=True)
 
@@ -62,6 +64,17 @@ class RecordViewManager:
         reference_time: date | str | None = None,
     ) -> list[MemoryRecord]:
         ids = current_memory_ids(self.version_manager, reference_time=reference_time)
+        return ordered_records_by_ids(self._memories_by_id, ids)
+
+    def point_in_time_records(
+        self,
+        *,
+        reference_time: date | str,
+    ) -> list[MemoryRecord]:
+        ids = point_in_time_memory_ids(
+            self.version_manager,
+            reference_time=reference_time,
+        )
         return ordered_records_by_ids(self._memories_by_id, ids)
 
     def history_records(
@@ -77,14 +90,30 @@ class RecordViewManager:
         return list(self._memories)
 
     def records_for_query(self, query: QueryRecord, *, view: ViewName) -> list[MemoryRecord]:
+        if query.query_type is QueryType.GENERAL:
+            return []
+
         if view is ViewName.FLAT:
             return self.flat_records()
 
         if view is ViewName.CURRENT:
-            reference_time = None if self.policy.current_as_of_latest else query.reference_time
-            return self.current_records(reference_time=reference_time)
+            # A current-state question must be resolved at the query time so
+            # temporary states that have expired are not treated as current.
+            if (
+                query.query_type in {QueryType.CURRENT, QueryType.CHANGE}
+                and not self.policy.current_as_of_latest
+            ):
+                return self.current_records(reference_time=query.reference_time)
+            return self.current_records()
 
         if view is ViewName.HISTORY:
+            if query.query_type is QueryType.HISTORICAL:
+                return self.point_in_time_records(reference_time=query.reference_time)
+            if (
+                query.query_type is QueryType.CHANGE
+                and self.policy.history_for_change_queries
+            ):
+                return self.history_records()
             return self.history_records()
 
         if view is ViewName.DUAL:
@@ -98,17 +127,12 @@ class RecordViewManager:
         merged: list[MemoryRecord] = []
 
         for view in decision.selected_views:
-            if view is ViewName.CURRENT:
-                records = self.current_records()
-            elif view is ViewName.HISTORY:
-                records = self.history_records()
-            else:
-                records = self.flat_records()
-
+            records = self.records_for_query(query, view=view)
             for memory in records:
-                if memory.memory_id not in seen:
-                    seen.add(memory.memory_id)
-                    merged.append(memory)
+                if memory.memory_id in seen:
+                    continue
+                seen.add(memory.memory_id)
+                merged.append(memory)
 
         merged.sort(key=lambda item: (item.event_time, item.memory_id))
         return merged
@@ -118,33 +142,37 @@ class RecordViewManager:
             return ViewDecision(
                 query_type=query.query_type,
                 selected_views=[ViewName.CURRENT],
-                reason="current query should avoid stale historical versions",
+                reason="current query uses the state snapshot at query.reference_time",
             )
 
         if query.query_type is QueryType.HISTORICAL:
             return ViewDecision(
                 query_type=query.query_type,
                 selected_views=[ViewName.HISTORY],
-                reason="historical query needs access to old versions",
+                reason="historical query uses the state snapshot valid at reference_time",
             )
 
         if query.query_type is QueryType.CHANGE:
             return ViewDecision(
                 query_type=query.query_type,
                 selected_views=[ViewName.CURRENT, ViewName.HISTORY],
-                reason="change query needs both latest state and prior versions",
+                reason="change query needs both the current snapshot and full version history",
             )
 
         return ViewDecision(
             query_type=query.query_type,
-            selected_views=[ViewName.CURRENT, ViewName.HISTORY],
-            reason="general query keeps both views available",
+            selected_views=[],
+            reason="general query should not retrieve personal memory",
         )
 
     def snapshot(self) -> dict[str, Any]:
         return {
             "memory_count": len(self._memories),
-            "current_memory_ids": sorted(memory.memory_id for memory in self.current_records()),
-            "history_memory_ids": sorted(memory.memory_id for memory in self.history_records()),
+            "current_memory_ids": sorted(
+                memory.memory_id for memory in self.current_records()
+            ),
+            "history_memory_ids": sorted(
+                memory.memory_id for memory in self.history_records()
+            ),
             "versioning": self.version_manager.snapshot(),
         }

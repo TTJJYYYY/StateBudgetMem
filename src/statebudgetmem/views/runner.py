@@ -22,6 +22,7 @@ from statebudgetmem.views.methods import (
     CurrentOnlyMemoryMethod,
     DualViewMemoryMethod,
     FlatViewMemoryMethod,
+    HistoryOnlyMemoryMethod,
 )
 
 
@@ -43,6 +44,9 @@ def build_view_method(name: str) -> MemoryMethod:
 
     if normalized in {"current", "current_only", "views_current_only"}:
         return CurrentOnlyMemoryMethod()
+
+    if normalized in {"history", "history_only", "views_history_only"}:
+        return HistoryOnlyMemoryMethod()
 
     if normalized in {"dual", "both", "views_dual"}:
         return DualViewMemoryMethod()
@@ -79,7 +83,9 @@ def run_views_experiment(config: ViewsExperimentConfig) -> dict[str, Any]:
                     token_budget=config.token_budget,
                 )
 
-                retrieved_ids = [item.memory_id for item in result.retrieved_memories]
+                retrieved_ids = [
+                    item.memory_id for item in result.retrieved_memories
+                ]
 
                 raw_rows.append(
                     {
@@ -88,17 +94,24 @@ def run_views_experiment(config: ViewsExperimentConfig) -> dict[str, Any]:
                         "query_id": query.query_id,
                         "query_text": query.text,
                         "query_type": query.query_type.value,
+                        "reference_time": query.reference_time.isoformat(),
+                        "routing_mode": "oracle_query_type",
                         "method": result.method_name,
                         "retrieved_memory_ids": retrieved_ids,
                         "retrieved_scores": [
-                            round(item.score, 12) for item in result.retrieved_memories
+                            round(item.score, 12)
+                            for item in result.retrieved_memories
                         ],
-                        "source_views": [item.source_view for item in result.retrieved_memories],
+                        "source_views": [
+                            item.source_view for item in result.retrieved_memories
+                        ],
                         "retrieved_valid_flags": [
-                            memory_id in query.gold_valid_memory_ids for memory_id in retrieved_ids
+                            memory_id in query.gold_valid_memory_ids
+                            for memory_id in retrieved_ids
                         ],
                         "retrieved_stale_flags": [
-                            memory_id in query.gold_stale_memory_ids for memory_id in retrieved_ids
+                            memory_id in query.gold_stale_memory_ids
+                            for memory_id in retrieved_ids
                         ],
                         "recall_at_k": recall_at_k(
                             retrieved_ids,
@@ -163,33 +176,80 @@ def _summaries(
 ) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     methods = sorted({row["method"] for row in raw_rows})
+    query_types = sorted({row["query_type"] for row in raw_rows})
 
     for method in methods:
-        selected = [row for row in raw_rows if row["method"] == method]
-
+        method_rows = [row for row in raw_rows if row["method"] == method]
         rows.append(
-            {
-                "run_id": run_id,
-                "method": method,
-                "query_count": len(selected),
-                "mean_recall_at_k": _mean(selected, "recall_at_k"),
-                "mean_valid_recall_at_k": _mean(selected, "valid_recall_at_k"),
-                "mean_stale_retrieval_rate": _mean(selected, "stale_retrieval_rate"),
-                "mean_token_cost": _mean(selected, "total_token_cost"),
-                "mean_retrieval_latency_ms": _mean(selected, "retrieval_latency_ms"),
-                "top_k": config.top_k,
-                "token_budget": config.token_budget,
-                "dataset_path": str(config.dataset_path),
-                "random_seed": config.random_seed,
-                "results_raw_path": str(raw_path),
-                "model_name": "offline_tfidf_cosine_with_versioned_views",
-                "run_time_seconds": elapsed_seconds,
-                "git_commit": _git_commit(),
-                "hardware_info": platform.platform(),
-            }
+            _summary_row(
+                config,
+                run_id,
+                method_rows,
+                method=method,
+                query_type="ALL",
+                raw_path=raw_path,
+                elapsed_seconds=elapsed_seconds,
+            )
         )
 
+        for query_type in query_types:
+            selected = [
+                row for row in method_rows if row["query_type"] == query_type
+            ]
+            if not selected:
+                continue
+            rows.append(
+                _summary_row(
+                    config,
+                    run_id,
+                    selected,
+                    method=method,
+                    query_type=query_type,
+                    raw_path=raw_path,
+                    elapsed_seconds=elapsed_seconds,
+                )
+            )
+
     return rows
+
+
+def _summary_row(
+    config: ViewsExperimentConfig,
+    run_id: str,
+    selected: list[dict[str, Any]],
+    *,
+    method: str,
+    query_type: str,
+    raw_path: Path,
+    elapsed_seconds: float,
+) -> dict[str, Any]:
+    return {
+        "run_id": run_id,
+        "method": method,
+        "query_type": query_type,
+        "routing_mode": "oracle_query_type",
+        "query_count": len(selected),
+        "mean_recall_at_k": _mean(selected, "recall_at_k"),
+        "mean_valid_recall_at_k": _mean(selected, "valid_recall_at_k"),
+        "mean_stale_retrieval_rate": _mean(
+            selected,
+            "stale_retrieval_rate",
+        ),
+        "mean_token_cost": _mean(selected, "total_token_cost"),
+        "mean_retrieval_latency_ms": _mean(
+            selected,
+            "retrieval_latency_ms",
+        ),
+        "top_k": config.top_k,
+        "token_budget": config.token_budget,
+        "dataset_path": str(config.dataset_path),
+        "random_seed": config.random_seed,
+        "results_raw_path": str(raw_path),
+        "model_name": "offline_tfidf_cosine_with_versioned_views",
+        "run_time_seconds": elapsed_seconds,
+        "git_commit": _git_commit(),
+        "hardware_info": platform.platform(),
+    }
 
 
 def _mean(rows: list[dict[str, Any]], key: str) -> float:

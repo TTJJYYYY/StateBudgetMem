@@ -31,7 +31,11 @@ def ordered_records_by_ids(
 ) -> list[MemoryRecord]:
     """Return records in deterministic chronological order."""
 
-    selected = [memories_by_id[memory_id] for memory_id in memory_ids if memory_id in memories_by_id]
+    selected = [
+        memories_by_id[memory_id]
+        for memory_id in memory_ids
+        if memory_id in memories_by_id
+    ]
     selected.sort(key=lambda item: (item.event_time, item.memory_id))
     return selected
 
@@ -41,6 +45,8 @@ def current_memory_ids(
     *,
     reference_time: date | str | None = None,
 ) -> set[str]:
+    """Return IDs active at ``reference_time`` (or at the latest known time)."""
+
     view = version_manager.current_view(reference_time=reference_time)
     return {
         state.memory_id
@@ -49,12 +55,28 @@ def current_memory_ids(
     }
 
 
+def point_in_time_memory_ids(
+    version_manager: VersionManager,
+    *,
+    reference_time: date | str,
+) -> set[str]:
+    """Return the state snapshot that was valid at a historical time."""
+
+    return current_memory_ids(version_manager, reference_time=reference_time)
+
+
 def history_memory_ids(
     version_manager: VersionManager,
     *,
     state_keys: Iterable[StateKey] | None = None,
 ) -> set[str]:
-    keys = tuple(state_keys) if state_keys is not None else tuple(version_manager.current_view().keys())
+    """Return all version nodes for the selected state keys."""
+
+    keys = (
+        tuple(state_keys)
+        if state_keys is not None
+        else tuple(version_manager.current_view().keys())
+    )
     result: set[str] = set()
     for key in keys:
         result.update(state.memory_id for state in version_manager.history(key))
@@ -71,4 +93,4 @@ def query_prefers_history(query: QueryRecord) -> bool:
 
 
 def query_prefers_current(query: QueryRecord) -> bool:
-    return query.query_type in {QueryType.CURRENT, QueryType.GENERAL}
+    return query.query_type is QueryType.CURRENT

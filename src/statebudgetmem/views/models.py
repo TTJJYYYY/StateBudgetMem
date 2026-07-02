@@ -20,18 +20,23 @@ class ViewName(str, Enum):
 class ViewPolicy(BaseModel):
     """Configuration for view-based retrieval.
 
-    current_as_of_latest=True 表示 Current View 始终代表“当前最新状态”。
-    这符合本项目的实验设定：Current View 只保留当前有效状态，
-    因此无法回答完整历史问题。
+    ``CURRENT`` and the current side of ``CHANGE`` are resolved at the query's
+    ``reference_time`` by default. ``HISTORICAL`` is resolved as a point-in-time
+    snapshot at the same reference time, while ``CHANGE`` may access the full
+    version history.
     """
 
     model_config = ConfigDict(extra="forbid")
 
-    current_as_of_latest: bool = True
+    current_as_of_latest: bool = False
     history_for_change_queries: bool = True
     expand_change_lineage: bool = True
-    current_score_boost: float = Field(default=0.02, ge=0.0)
-    history_score_penalty_for_current: float = Field(default=0.15, ge=0.0)
+
+    # Kept only for backwards-compatible configuration loading. Dual-view
+    # ranking now uses one shared TF-IDF candidate space, so score offsets are
+    # intentionally ignored.
+    current_score_boost: float = Field(default=0.0, ge=0.0)
+    history_score_penalty_for_current: float = Field(default=0.0, ge=0.0)
 
 
 class CandidateMemory(BaseModel):

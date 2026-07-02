@@ -133,6 +133,59 @@ def _normalize_bool(raw: object) -> bool | None:
     return None
 
 
+def _metadata_with_explicit_relations(memory: MemoryRecord) -> dict[str, Any]:
+    """Bridge public relation fields into the versioning metadata contract."""
+
+    metadata = normalize_versioning_metadata(memory.metadata)
+    supersedes = _normalize_target_ids(memory.supersedes) or []
+    temporarily_invalidates = _normalize_target_ids(memory.temporarily_invalidates) or []
+
+    if not supersedes and not temporarily_invalidates:
+        return metadata
+
+    explicit_targets = _normalize_target_ids(metadata.get("versioning_target_ids")) or []
+    all_targets = list(
+        dict.fromkeys([*explicit_targets, *supersedes, *temporarily_invalidates])
+    )
+    metadata["versioning_target_ids"] = all_targets
+
+    if supersedes and temporarily_invalidates:
+        metadata["needs_review"] = True
+        metadata["versioning_contract_error"] = (
+            "MemoryRecord cannot declare both supersedes and "
+            "temporarily_invalidates in one atomic observation"
+        )
+        metadata["versioning_intent"] = UpdateOperation.NOOP.value
+        return metadata
+
+    relation_intent = (
+        UpdateOperation.SUPERSEDE
+        if supersedes
+        else UpdateOperation.TEMP_INVALIDATE
+    )
+    existing_raw = metadata.get("versioning_intent")
+    existing = None
+    if existing_raw is not None:
+        try:
+            existing = UpdateOperation(existing_raw)
+        except (TypeError, ValueError):
+            existing = None
+
+    if existing is not None and existing is not relation_intent:
+        metadata["needs_review"] = True
+        metadata["versioning_contract_error"] = (
+            "MemoryRecord relation fields conflict with versioning_intent "
+            f"({relation_intent.value} != {existing.value})"
+        )
+        metadata["versioning_intent"] = UpdateOperation.NOOP.value
+        return metadata
+
+    metadata["versioning_intent"] = relation_intent.value
+    if relation_intent is UpdateOperation.TEMP_INVALIDATE:
+        metadata["temporary"] = True
+    return metadata
+
+
 class MemoryRecordAdapter:
     """Convert public MemoryRecord objects into versioning observations."""
 
@@ -148,6 +201,7 @@ class MemoryRecordAdapter:
                 for name, value in memory.dimensions.items()
             ),
         )
+        metadata = _metadata_with_explicit_relations(memory)
         observation = StateObservation(
             memory_id=memory.memory_id,
             state_key=state_key,
@@ -157,6 +211,6 @@ class MemoryRecordAdapter:
             valid_from=memory.valid_from,
             valid_to=memory.valid_to,
             confidence=memory.confidence,
-            metadata=normalize_versioning_metadata(memory.metadata),
+            metadata=metadata,
         )
         return (observation,)

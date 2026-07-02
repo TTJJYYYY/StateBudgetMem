@@ -87,19 +87,26 @@ class ViewMemoryMethod:
                 "view": self.view.value,
                 "token_budget": token_budget,
                 "mutate": mutate,
-                "router_source": "QueryRecord.query_type",
+                "router_source": "oracle_query_type",
+                "reference_time": query.reference_time.isoformat(),
             },
         )
 
     def _rank(self, query: QueryRecord, *, top_k: int) -> list[RankedCandidate]:
+        if query.query_type is QueryType.GENERAL:
+            return []
+
         if self.view is ViewName.FLAT:
-            return self._rank_one_view(query, self.manager.flat_records(), ViewName.FLAT, top_k)
+            memories = self.manager.records_for_query(query, view=ViewName.FLAT)
+            return self._rank_one_view(query, memories, ViewName.FLAT, top_k)
 
         if self.view is ViewName.CURRENT:
-            return self._rank_one_view(query, self.manager.current_records(), ViewName.CURRENT, top_k)
+            memories = self.manager.records_for_query(query, view=ViewName.CURRENT)
+            return self._rank_one_view(query, memories, ViewName.CURRENT, top_k)
 
         if self.view is ViewName.HISTORY:
-            return self._rank_one_view(query, self.manager.history_records(), ViewName.HISTORY, top_k)
+            memories = self.manager.records_for_query(query, view=ViewName.HISTORY)
+            return self._rank_one_view(query, memories, ViewName.HISTORY, top_k)
 
         if self.view is ViewName.DUAL:
             return self._rank_dual(query, top_k=top_k)
@@ -113,7 +120,11 @@ class ViewMemoryMethod:
         source_view: ViewName,
         top_k: int,
     ) -> list[RankedCandidate]:
-        retrieved = self.retriever.retrieve(query, memories, top_k=max(top_k, len(memories)))
+        retrieved = self.retriever.retrieve(
+            query,
+            memories,
+            top_k=max(top_k, len(memories)),
+        )
 
         return [
             RankedCandidate(
@@ -126,44 +137,67 @@ class ViewMemoryMethod:
         ]
 
     def _rank_dual(self, query: QueryRecord, *, top_k: int) -> list[RankedCandidate]:
+        """Rank all selected-view candidates in one shared TF-IDF space.
+
+        Current and history candidates used to be ranked in separate document
+        collections and their cosine scores were then compared directly. This
+        method creates one deduplicated candidate pool first, so every score is
+        computed with the same IDF statistics.
+        """
+
         decision = self.manager.route(query)
+        if not decision.selected_views:
+            return []
 
-        if query.query_type is QueryType.CURRENT:
-            return self._rank_one_view(query, self.manager.current_records(), ViewName.CURRENT, top_k)
+        candidate_by_id: dict[str, MemoryRecord] = {}
+        source_views_by_id: dict[str, list[ViewName]] = {}
 
-        if query.query_type is QueryType.HISTORICAL:
-            return self._rank_one_view(query, self.manager.history_records(), ViewName.HISTORY, top_k)
+        for view in decision.selected_views:
+            for memory in self.manager.records_for_query(query, view=view):
+                candidate_by_id[memory.memory_id] = memory
+                sources = source_views_by_id.setdefault(memory.memory_id, [])
+                if view not in sources:
+                    sources.append(view)
 
-        current_hits = self._rank_one_view(
-            query,
-            self.manager.current_records(),
-            ViewName.CURRENT,
-            top_k,
+        candidates = sorted(
+            candidate_by_id.values(),
+            key=lambda item: (item.event_time, item.memory_id),
         )
-        history_hits = self._rank_one_view(
+        retrieved = self.retriever.retrieve(
             query,
-            self.manager.history_records(),
-            ViewName.HISTORY,
-            max(top_k, top_k * 2),
+            candidates,
+            top_k=max(top_k, len(candidates)),
         )
 
-        merged = _merge_ranked_candidates(current_hits + history_hits)
+        ranked: list[RankedCandidate] = []
+        for item in retrieved:
+            sources = source_views_by_id[item.memory.memory_id]
+            primary_source = (
+                ViewName.CURRENT if ViewName.CURRENT in sources else sources[0]
+            )
+            ranked.append(
+                RankedCandidate(
+                    memory=item.memory,
+                    score=item.score,
+                    source_view=primary_source,
+                    metadata={
+                        "raw_rank": item.rank,
+                        "source_views": [view.value for view in sources],
+                        "dual_route": [
+                            view.value for view in decision.selected_views
+                        ],
+                        "ranking_space": "shared_tfidf_candidate_pool",
+                    },
+                )
+            )
 
         if query.query_type is QueryType.CHANGE and self.manager.policy.expand_change_lineage:
-            merged = self._expand_lineage(merged, query=query)
+            ranked = self._expand_lineage(ranked, query=query)
 
-        for index, item in enumerate(merged):
-            item.metadata.setdefault("dual_route", [view.value for view in decision.selected_views])
-            if item.source_view is ViewName.CURRENT:
-                merged[index] = RankedCandidate(
-                    memory=item.memory,
-                    score=item.score + self.manager.policy.current_score_boost,
-                    source_view=item.source_view,
-                    metadata=item.metadata,
-                )
-
-        merged.sort(key=lambda item: (-item.score, item.memory.event_time, item.memory.memory_id))
-        return merged
+        ranked.sort(
+            key=lambda item: (-item.score, item.memory.event_time, item.memory.memory_id)
+        )
+        return ranked
 
     def _expand_lineage(
         self,
@@ -176,7 +210,7 @@ class ViewMemoryMethod:
         seen = {item.memory.memory_id for item in expanded}
         base_score = ranked[-1].score if ranked else 0.0
 
-        for item in ranked[: max(1, len(ranked))]:
+        for item in ranked:
             for state in self.manager.version_manager.lineage(item.memory.memory_id):
                 if state.memory_id in seen or state.memory_id not in by_id:
                     continue
@@ -216,30 +250,6 @@ class HistoryOnlyMemoryMethod(ViewMemoryMethod):
 class DualViewMemoryMethod(ViewMemoryMethod):
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(name="views_dual", view=ViewName.DUAL, **kwargs)
-
-
-def _merge_ranked_candidates(items: list[RankedCandidate]) -> list[RankedCandidate]:
-    best: dict[str, RankedCandidate] = {}
-
-    for item in items:
-        existing = best.get(item.memory.memory_id)
-
-        if existing is None or item.score > existing.score:
-            best[item.memory.memory_id] = item
-
-        elif existing is not None and item.source_view is ViewName.CURRENT:
-            metadata = dict(existing.metadata)
-            metadata["also_in_current"] = True
-            best[item.memory.memory_id] = RankedCandidate(
-                memory=existing.memory,
-                score=existing.score,
-                source_view=existing.source_view,
-                metadata=metadata,
-            )
-
-    result = list(best.values())
-    result.sort(key=lambda item: (-item.score, item.memory.event_time, item.memory.memory_id))
-    return result
 
 
 def _apply_token_budget(

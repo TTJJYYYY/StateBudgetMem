@@ -80,13 +80,13 @@ CURRENT 查询
 └── 使用 Current View
 
 HISTORICAL 查询
-└── 使用 History View
+└── 使用 reference_time 对应的历史状态快照
 
 CHANGE 查询
-└── 使用 Current View + History View
+└── 使用 reference_time 对应的 Current View + 完整 History View
 
 GENERAL 查询
-└── 使用 Current View + History View
+└── 不检索个人记忆
 ```
 
 ---
@@ -270,9 +270,12 @@ runner.py
 
 仅历史视图方法。
 
-该方法检索完整历史版本，主要用于调试和分析。
+该方法根据查询语义选择历史范围：
 
-一般不作为主要方法参与对比，但可以用于观察历史版本是否被完整保留。
+* `HISTORICAL` 查询只检索 `reference_time` 当时有效的状态快照；
+* `CHANGE` 查询可以访问完整历史版本链。
+
+这样可以避免目标时间之后的版本与目标时间状态平等竞争。
 
 ---
 
@@ -293,20 +296,40 @@ CHANGE
 └── 使用 Current View + History View
 
 GENERAL
-└── 使用 Current View + History View
+└── 不检索个人记忆
 ```
 
 优点：
 
 ```text
-既能减少当前问题中的旧记忆干扰，又能保留历史问题和变化问题的回答能力。
+既能减少当前问题中的旧记忆干扰，又能按时间点回答历史问题，并保留变化问题所需的完整版本链。
 ```
 
 这是本模块的主要方法。
 
 ---
 
-## 七、实验比较
+## 七、时间语义与路由约定
+
+```text
+CURRENT
+└── 在 query.reference_time 解析当前有效状态
+
+HISTORICAL
+└── 在 query.reference_time 解析当时有效的历史状态快照
+
+CHANGE
+└── 当前时间点状态 + 完整版本历史
+
+GENERAL
+└── 不读取个人记忆
+```
+
+`Dual View` 会先合并所选视图的候选记忆，再在同一个 TF-IDF 文档空间中统一排序，避免分别计算的 cosine score 不可直接比较。
+
+---
+
+## 八、实验比较
 
 本模块重点比较三种方法：
 
@@ -341,7 +364,7 @@ DualViewMemoryMethod
 
 ---
 
-## 八、运行方式
+## 九、运行方式
 
 在项目根目录运行：
 
@@ -353,7 +376,7 @@ PYTHONPATH=src python tools/views/run_views_experiment.py \
   --results-dir results/views
 ```
 
-默认比较三种方法：
+默认比较三种方法。当前实验使用数据集中的 `QueryRecord.query_type` 作为 oracle routing（金标签路由），不是 Routing 模块的真实预测结果：
 
 ```text
 flat
@@ -372,7 +395,7 @@ PYTHONPATH=src python tools/views/run_views_experiment.py \
 
 ---
 
-## 九、测试方式
+## 十、测试方式
 
 只测试 `views/` 模块：
 
@@ -387,7 +410,7 @@ PYTHONPATH=src pytest tests/views tests/preprocessing/test_record_adapter.py -q
 ```
 
 ---
-## 十、本模块的作用
+## 十一、本模块的作用
 
 `views/` 模块在项目中的作用可以概括为：
 
