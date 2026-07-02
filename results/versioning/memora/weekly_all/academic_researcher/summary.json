@@ -1,0 +1,43 @@
+{
+  "all_operations_covered": true,
+  "controlled_coverage": {
+    "decision_count": 7,
+    "graph_edges": 10,
+    "graph_nodes": 6,
+    "graph_valid": true,
+    "operation_counts": {
+      "ADD": 1,
+      "DELETE": 1,
+      "MERGE": 1,
+      "NOOP": 1,
+      "RESTORE": 1,
+      "SUPERSEDE": 1,
+      "TEMP_INVALIDATE": 1
+    },
+    "record_count": 7,
+    "requires_review_count": 0,
+    "runtime_errors": 0
+  },
+  "conversion_issues": 0,
+  "converted_records": 102,
+  "elapsed_seconds": 0.7040967000066303,
+  "memora": {
+    "decision_count": 102,
+    "graph_edges": 25,
+    "graph_nodes": 100,
+    "graph_valid": true,
+    "operation_counts": {
+      "ADD": 75,
+      "DELETE": 18,
+      "NOOP": 2,
+      "SUPERSEDE": 7
+    },
+    "record_count": 102,
+    "requires_review_count": 0,
+    "runtime_errors": 0
+  },
+  "mode": "semantic",
+  "period": "weekly",
+  "persona": "academic_researcher",
+  "scanned_sessions": 158
+}

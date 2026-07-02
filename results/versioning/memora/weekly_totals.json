@@ -1,0 +1,18 @@
+﻿{
+    "Personas":  10,
+    "Sessions":  1551,
+    "Records":  1032,
+    "Decisions":  1032,
+    "ADD":  739,
+    "MERGE":  1,
+    "SUPERSEDE":  95,
+    "TEMP_INVALIDATE":  4,
+    "RESTORE":  0,
+    "DELETE":  174,
+    "NOOP":  19,
+    "Nodes":  1013,
+    "Edges":  274,
+    "NeedsReview":  0,
+    "Errors":  0,
+    "RuntimeSec":  6.403
+}
