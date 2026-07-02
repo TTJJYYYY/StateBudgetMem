@@ -253,7 +253,7 @@ class MemoryBank(MemorySystem):
             return UpdateOperation.NOOP, best_mid
         elif best_score > 0.75:
             # 语义相关，可能是更新
-            return UpdateOperation.UPDATE, best_mid
+            return UpdateOperation.MERGE, best_mid
         else:
             return UpdateOperation.ADD, None
 
@@ -263,7 +263,7 @@ class MemoryBank(MemorySystem):
         """Phase 2b: 执行操作"""
         if operation == UpdateOperation.ADD:
             return self._insert_memory(candidate)
-        elif operation == UpdateOperation.UPDATE and target_id:
+        elif operation == UpdateOperation.MERGE and target_id:
             # 更新：给目标记忆补充信息
             target = self.memories_by_id.get(target_id)
             if target:
@@ -363,7 +363,8 @@ class MemoryBank(MemorySystem):
             age_hours = (now - mem.timestamp) / 3600.0
             time_decay = math.exp(-age_hours / 168)  # 一周衰减
             semantic_score = float(dist)
-            composite_score = semantic_score * (1 + mem.strength * 0.3) * time_decay
+            strength_factor = 1 + mem.strength * 0.3
+            composite_score = semantic_score * strength_factor * time_decay
 
             # Spacing Effect
             mem.strength += 1
@@ -377,6 +378,8 @@ class MemoryBank(MemorySystem):
                 "memory_type": mem.memory_type.value,
                 "semantic_score": round(semantic_score, 4),
                 "composite_score": round(composite_score, 4),
+                "time_decay": round(time_decay, 6),
+                "strength_factor": round(strength_factor, 4),
                 "strength": mem.strength,
                 "status": mem.status.value,
                 "tags": mem.tags,

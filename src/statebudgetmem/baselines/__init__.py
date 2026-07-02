@@ -19,6 +19,8 @@ __all__ = [
     "TfidfCosineRetriever",
     "BaselineConfig",
     "run_baseline",
+    "BaselineComparisonConfig",
+    "run_baseline_comparison",
     "MemoryBank",
     "TFIDFMemoryBank",
     "BaselineAgent",
@@ -36,4 +38,8 @@ def __getattr__(name: str):
         from statebudgetmem.baselines import memorybank
 
         return getattr(memorybank, name)
+    if name in {"BaselineComparisonConfig", "run_baseline_comparison"}:
+        from statebudgetmem.baselines import runner
+
+        return getattr(runner, name)
     raise AttributeError(name)
