@@ -156,6 +156,10 @@ python tools/memorybank/run_evaluation.py --output results/memorybank/evaluation
 python tools/memorybank/analyze_staleness.py --mode demo
 ```
 
+The TF-IDF staleness command runs offline on
+`data/controlled/baseline_scenarios.jsonl` by default and writes machine-readable
+raw, JSON summary, and CSV summary files under `results/staleness/`.
+
 MemoryBank visual comparison:
 
 ```bash

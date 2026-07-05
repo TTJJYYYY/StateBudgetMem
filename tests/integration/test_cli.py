@@ -45,3 +45,40 @@ def test_cli_run_writes_outputs(tmp_path: Path) -> None:
     assert summary["query_count"] == len(raw_rows)
     assert int(csv_row["query_count"]) == summary["query_count"]
     assert float(csv_row["mean_recall_at_k"]) == summary["mean_recall_at_k"]
+
+
+def test_cli_analyze_staleness_tfidf_writes_outputs(tmp_path: Path, capsys) -> None:
+    results_dir = tmp_path / "staleness"
+
+    assert main(
+        [
+            "analyze-staleness",
+            "--backend",
+            "tfidf",
+            "--top-k",
+            "3",
+            "--results-dir",
+            str(results_dir),
+        ]
+    ) == 0
+
+    output = json.loads(capsys.readouterr().out)
+    assert output["backend"] == "tfidf"
+    assert "mean_stale_retrieval_rate" in output
+    assert output["queries_with_stale_retrieval"] > 0
+
+    raw_path = Path(output["raw_path"])
+    summary_json_path = Path(output["summary_json_path"])
+    summary_csv_path = Path(output["summary_csv_path"])
+    assert raw_path.exists()
+    assert summary_json_path.exists()
+    assert summary_csv_path.exists()
+
+    raw_rows = [
+        json.loads(line)
+        for line in raw_path.read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
+    summary = json.loads(summary_json_path.read_text(encoding="utf-8"))
+    assert any(row["stale_retrieval_rate"] > 0 for row in raw_rows)
+    assert summary["mean_stale_retrieval_rate"] == output["mean_stale_retrieval_rate"]

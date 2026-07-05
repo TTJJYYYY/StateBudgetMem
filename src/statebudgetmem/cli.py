@@ -60,6 +60,16 @@ def build_parser() -> argparse.ArgumentParser:
     stale_parser.add_argument("--sample", type=int, default=20)
     stale_parser.add_argument("--top-k", type=int, default=5)
     stale_parser.add_argument(
+        "--dataset-path",
+        default="data/controlled/baseline_scenarios.jsonl",
+        help="Controlled JSONL dataset used by the offline TF-IDF backend.",
+    )
+    stale_parser.add_argument(
+        "--results-dir",
+        default="results/staleness",
+        help="Directory for machine-readable staleness analysis outputs.",
+    )
+    stale_parser.add_argument(
         "--backend", choices=["tfidf", "memorybank"], default="tfidf"
     )
 
@@ -176,6 +186,9 @@ def _evaluate_memorybank(args: argparse.Namespace) -> int:
 
 
 def _analyze_staleness(args: argparse.Namespace) -> int:
+    if args.backend == "tfidf":
+        return _analyze_tfidf_staleness(args)
+
     try:
         from statebudgetmem.baselines import MemoryBank, TFIDFMemoryBank
         from statebudgetmem.baselines.memorybank import (
@@ -240,6 +253,45 @@ def _analyze_staleness(args: argparse.Namespace) -> int:
         "omr": totals["obsolete"] / totals["retrieved"] if totals["retrieved"] else 0.0,
         "cor": totals["current"] / totals["retrieved"] if totals["retrieved"] else 0.0,
         "details": rows,
+    }
+    print(json.dumps(summary, ensure_ascii=False, indent=2))
+    return 0
+
+
+def _analyze_tfidf_staleness(args: argparse.Namespace) -> int:
+    config = BaselineConfig(
+        method="tfidf_topk",
+        dataset_path=Path(args.dataset_path),
+        top_k=int(args.top_k),
+        random_seed=42,
+        results_dir=Path(args.results_dir),
+        config_path=Path("README.md"),
+    )
+    result = run_baseline(config)
+    raw_path = Path(result["raw_path"])
+    rows = [
+        json.loads(line)
+        for line in raw_path.read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
+    stale_rows = [
+        row for row in rows if float(row.get("stale_retrieval_rate", 0.0)) > 0.0
+    ]
+    summary = {
+        "backend": "tfidf",
+        "method": "tfidf_topk",
+        "dataset_path": str(config.dataset_path),
+        "top_k": config.top_k,
+        "query_count": len(rows),
+        "queries_with_stale_retrieval": len(stale_rows),
+        "mean_stale_retrieval_rate": result["summary"]["mean_stale_retrieval_rate"],
+        "max_stale_retrieval_rate": max(
+            (float(row["stale_retrieval_rate"]) for row in rows),
+            default=0.0,
+        ),
+        "raw_path": result["raw_path"],
+        "summary_json_path": result["summary_json_path"],
+        "summary_csv_path": result["summary_csv_path"],
     }
     print(json.dumps(summary, ensure_ascii=False, indent=2))
     return 0
