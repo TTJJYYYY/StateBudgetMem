@@ -130,52 +130,40 @@ python -m pip install -e ".[llm]"         # OpenAI-compatible APIs
 python -m pip install -e ".[demo]"        # MemoryBank + Gradio
 ```
 
-## Main commands
+## Demo Commands
 
-Controlled TF-IDF baseline:
-
-```bash
-statebudgetmem run --config configs/baseline.yaml
-```
-
-Query routing:
+Install the project first when using the `statebudgetmem` and
+`statebudgetmem-demo` command names:
 
 ```bash
-statebudgetmem route "我现在还喜欢吃辣吗？"
-python tools/routing/debug_routing.py --dry-run --query "我的饮食习惯怎么变化的？"
+python -m pip install -e ".[test]"
 ```
 
-MemoryBank evaluation and stale-memory analysis:
+### Recommended defense flow
 
-```bash
-statebudgetmem evaluate-memorybank --output results/memorybank/evaluation.json
-statebudgetmem analyze-staleness --backend tfidf
+| Purpose | Command | Output |
+|---|---|---|
+| Full offline defense demo | `python tools/demo/run_defense_demo.py` | Prints TF-IDF, versioning, views, and routing metrics; writes `results/defense_demo/latest_summary.json`. |
+| Controlled TF-IDF baseline | `statebudgetmem run --config configs/baseline.yaml` | Writes `results/raw/*.jsonl` and `results/summaries/*.json|csv`. |
+| CLI smoke check | `python -m statebudgetmem.cli --help` | Shows the installed CLI subcommands. |
 
-# Full original-style utilities:
-python tools/memorybank/run_evaluation.py --output results/memorybank/evaluation.json
-python tools/memorybank/analyze_staleness.py --mode demo
-```
+The unified defense demo is the preferred group-meeting/defense entry point. It
+runs fully offline and calls the current TF-IDF baseline, deterministic
+versioning example, flat/current/dual views experiment, and rule-based routing
+examples in one command.
 
-The TF-IDF staleness command runs offline on
-`data/controlled/baseline_scenarios.jsonl` by default and writes machine-readable
-raw, JSON summary, and CSV summary files under `results/staleness/`.
+### Optional commands
 
-Unified defense demo:
-
-```bash
-python tools/demo/run_defense_demo.py
-```
-
-This offline script runs the TF-IDF baseline, a deterministic versioning
-example, the flat/current/dual views experiment, and rule-based routing
-examples. It prints the key defense metrics and writes a combined summary to
-`results/defense_demo/latest_summary.json`.
-
-MemoryBank visual comparison:
-
-```bash
-statebudgetmem-demo
-```
+| Purpose | Command | Notes |
+|---|---|---|
+| Query routing example | `statebudgetmem route "我现在还喜欢吃辣吗?"` | Offline rule router by default. Add `--mode llm` only when API settings are available. |
+| Routing prompt debug | `python tools/routing/debug_routing.py --dry-run --query "我的饮食习惯是怎么变化的?"` | Prints prompt/debug information without calling an API. |
+| Views experiment only | `python tools/views/run_views_experiment.py` | Requires the project to be installed, or run with `PYTHONPATH=src`. Writes under `results/views/`. |
+| TF-IDF stale analysis | `statebudgetmem analyze-staleness --backend tfidf` | Offline; writes under `results/staleness/`. |
+| MemoryBank evaluation | `statebudgetmem evaluate-memorybank --output results/memorybank/evaluation.json` | Uses mock LLM offline unless `--online` is set; optional MemoryBank dependencies are required. |
+| MemoryBank utility wrapper | `python tools/memorybank/run_evaluation.py --output results/memorybank/evaluation.json` | Original-style thin wrapper around the MemoryBank evaluator. |
+| MemoryBank stale utility | `python tools/memorybank/analyze_staleness.py --mode demo` | Original-style stale-memory utility. |
+| MemoryBank Gradio demo | `statebudgetmem-demo` | Launches `statebudgetmem.baselines.memorybank.demo:main`; optional demo dependencies are required. |
 
 Read [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) before changing shared
 interfaces, and use [`docs/TEAM_WORKFLOW.md`](docs/TEAM_WORKFLOW.md) for team
