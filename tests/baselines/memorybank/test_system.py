@@ -1,5 +1,13 @@
+import os
+import subprocess
+import sys
+import textwrap
+from pathlib import Path
+
 from statebudgetmem.baselines.memorybank import TFIDFMemoryBank
 from statebudgetmem.interfaces import MemoryStatus, UpdateOperation
+
+ROOT = Path(__file__).resolve().parents[3]
 
 
 def test_tfidf_memorybank_supports_shared_online_contract_without_heavy_models() -> None:
@@ -13,6 +21,54 @@ def test_tfidf_memorybank_supports_shared_online_contract_without_heavy_models()
 
     memory.update(ids[0], UpdateOperation.SUPERSEDE)
     assert memory.get(ids[0]).status == MemoryStatus.SUPERSEDED
+
+
+def test_memorybank_package_imports_without_optional_dependencies() -> None:
+    script = textwrap.dedent(
+        """
+        import importlib.abc
+        import sys
+
+        blocked_roots = {"numpy", "faiss", "sentence_transformers"}
+
+        class BlockOptional(importlib.abc.MetaPathFinder):
+            def find_spec(self, fullname, path=None, target=None):
+                if fullname.split(".", 1)[0] in blocked_roots:
+                    raise ImportError(f"blocked optional dependency: {fullname}")
+                return None
+
+        sys.meta_path.insert(0, BlockOptional())
+
+        import statebudgetmem.baselines.memorybank as memorybank
+
+        assert memorybank.TFIDFMemoryBank.__name__ == "TFIDFMemoryBank"
+        try:
+            memorybank.MemoryBank()
+        except ImportError as exc:
+            message = str(exc)
+            assert "pip install -e '.[memorybank]'" in message
+            assert "numpy" in message
+            assert "faiss-cpu" in message
+        else:
+            raise AssertionError("MemoryBank should require optional dependencies")
+        """
+    )
+    env = os.environ.copy()
+    src_path = str(ROOT / "src")
+    env["PYTHONPATH"] = (
+        src_path
+        if not env.get("PYTHONPATH")
+        else src_path + os.pathsep + env["PYTHONPATH"]
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", script],
+        cwd=ROOT,
+        env=env,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
 
 
 def test_memorybank_similarity_update_uses_merge_operation() -> None:

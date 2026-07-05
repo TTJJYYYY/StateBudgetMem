@@ -11,6 +11,8 @@ MemoryBank — 统一接口实现
 同时提供 TFIDFMemoryBank 基线实现。
 """
 
+from __future__ import annotations
+
 import math
 import time
 import json
@@ -31,6 +33,11 @@ from typing import List, Dict, Optional, Tuple, Any, Callable
 from statebudgetmem.core import (
     MemorySystem, MemoryPiece, MemoryType, MemoryStatus,
     UpdateOperation, filter_memories, messages_to_memory_pieces
+)
+
+MEMORYBANK_INSTALL_HINT = (
+    "FAISS MemoryBank requires optional dependencies. "
+    "Install them with: pip install -e '.[memorybank]'"
 )
 
 
@@ -60,9 +67,13 @@ class MemoryBank(MemorySystem):
             decay_interval_hours: float = 24.0,
     ):
         if np is None or faiss is None:
+            missing = [
+                name
+                for name, module in (("numpy", np), ("faiss-cpu", faiss))
+                if module is None
+            ]
             raise ImportError(
-                "FAISS MemoryBank requires optional dependencies. "
-                "Install with: pip install -e '.[memorybank]'"
+                f"{MEMORYBANK_INSTALL_HINT}. Missing: {', '.join(missing)}"
             )
         self.embedding_dim = embedding_dim
         self.forgetting_threshold = forgetting_threshold
@@ -97,7 +108,12 @@ class MemoryBank(MemorySystem):
             emb = self._embedding_model.encode(text)
         else:
             if self._embedding_model_local is None:
-                from sentence_transformers import SentenceTransformer
+                try:
+                    from sentence_transformers import SentenceTransformer
+                except ImportError as exc:  # pragma: no cover - optional extra
+                    raise ImportError(
+                        f"{MEMORYBANK_INSTALL_HINT}. Missing: sentence-transformers"
+                    ) from exc
                 self._embedding_model_local = SentenceTransformer('all-MiniLM-L6-v2')
                 print(f"[MemoryBank] 已加载 embedding 模型: all-MiniLM-L6-v2")
             emb = self._embedding_model_local.encode(text)

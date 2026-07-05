@@ -9,6 +9,11 @@ from typing import Any
 from statebudgetmem.data import read_flat_yaml
 from statebudgetmem.baselines.tfidf import BaselineConfig, run_baseline
 
+MEMORYBANK_OPTIONAL_HINT = (
+    "MemoryBank command requires optional dependencies. "
+    "Install them with: pip install -e '.[memorybank]'"
+)
+
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="statebudgetmem")
@@ -116,14 +121,26 @@ def _route_query(args: argparse.Namespace) -> int:
     return 0
 
 
+def _memorybank_dependency_error(exc: ImportError) -> SystemExit:
+    message = str(exc)
+    if "MemoryBank requires optional dependencies" in message:
+        return SystemExit(message)
+    if "FAISS MemoryBank requires optional dependencies" in message:
+        return SystemExit(message)
+    return SystemExit(f"{MEMORYBANK_OPTIONAL_HINT}. Original error: {message}")
+
+
 def _evaluate_memorybank(args: argparse.Namespace) -> int:
-    from statebudgetmem.baselines.memorybank import (
-        MemoryEvaluator,
-        MockLLM,
-        OpenAICompatibleLLM,
-        load_json_dataset,
-        load_memora_data,
-    )
+    try:
+        from statebudgetmem.baselines.memorybank import (
+            MemoryEvaluator,
+            MockLLM,
+            OpenAICompatibleLLM,
+            load_json_dataset,
+            load_memora_data,
+        )
+    except ImportError as exc:
+        raise _memorybank_dependency_error(exc) from exc
 
     if args.online:
         api_key = args.api_key or os.environ.get("OPENAI_API_KEY", "")
@@ -148,7 +165,10 @@ def _evaluate_memorybank(args: argparse.Namespace) -> int:
         )
 
     evaluator = MemoryEvaluator(llm_caller=llm, judge_caller=llm if args.online else None)
-    result = evaluator.run_evaluation(history, probes, portrait or "")
+    try:
+        result = evaluator.run_evaluation(history, probes, portrait or "")
+    except ImportError as exc:
+        raise _memorybank_dependency_error(exc) from exc
     output = evaluator.export_results(result, args.output)
     print(json.dumps(result["summary"], ensure_ascii=False, indent=2))
     print(f"output: {output}")
@@ -156,15 +176,18 @@ def _evaluate_memorybank(args: argparse.Namespace) -> int:
 
 
 def _analyze_staleness(args: argparse.Namespace) -> int:
-    from statebudgetmem.baselines import MemoryBank, TFIDFMemoryBank
-    from statebudgetmem.baselines.memorybank import (
-        DEMO_HISTORY,
-        DEMO_QUESTIONS,
-        ObsoleteDetector,
-        calculate_outdated_memory_rate,
-        label_demo_memory,
-        load_memora_data,
-    )
+    try:
+        from statebudgetmem.baselines import MemoryBank, TFIDFMemoryBank
+        from statebudgetmem.baselines.memorybank import (
+            DEMO_HISTORY,
+            DEMO_QUESTIONS,
+            ObsoleteDetector,
+            calculate_outdated_memory_rate,
+            label_demo_memory,
+            load_memora_data,
+        )
+    except ImportError as exc:
+        raise _memorybank_dependency_error(exc) from exc
 
     if args.memora_dir:
         history, probes, _ = load_memora_data(
@@ -179,8 +202,11 @@ def _analyze_staleness(args: argparse.Namespace) -> int:
         questions = DEMO_QUESTIONS[: args.sample]
         detector = None
 
-    memory_bank = MemoryBank() if args.backend == "memorybank" else TFIDFMemoryBank()
-    memory_bank.add(history)
+    try:
+        memory_bank = MemoryBank() if args.backend == "memorybank" else TFIDFMemoryBank()
+        memory_bank.add(history)
+    except ImportError as exc:
+        raise _memorybank_dependency_error(exc) from exc
     all_memories = [
         {
             "memory_id": memory.memory_id,
