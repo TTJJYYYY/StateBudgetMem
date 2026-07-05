@@ -28,7 +28,10 @@ import time
 from datetime import datetime
 from typing import Any, Optional, Protocol, runtime_checkable
 
-import yaml
+try:
+    import yaml
+except ImportError:  # pragma: no cover - exercised only in minimal demo envs
+    yaml = None
 
 from statebudgetmem.core import MemoryPiece, QueryRouter as QueryRouterABC, ViewType
 from statebudgetmem.schemas import QueryType
@@ -186,6 +189,10 @@ def load_config(config_path: Optional[str] = None) -> dict[str, Any]:
     Returns:
         配置字典; 文件不存在时返回空 dict (不抛异常, 由调用方用默认值)。
     """
+    if yaml is None:
+        logger.warning("PyYAML is not installed; using routing defaults")
+        return {}
+
     path = config_path or _DEFAULT_CONFIG_PATH
     try:
         with open(path, "r", encoding="utf-8") as f:

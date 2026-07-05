@@ -160,6 +160,17 @@ The TF-IDF staleness command runs offline on
 `data/controlled/baseline_scenarios.jsonl` by default and writes machine-readable
 raw, JSON summary, and CSV summary files under `results/staleness/`.
 
+Unified defense demo:
+
+```bash
+python tools/demo/run_defense_demo.py
+```
+
+This offline script runs the TF-IDF baseline, a deterministic versioning
+example, the flat/current/dual views experiment, and rule-based routing
+examples. It prints the key defense metrics and writes a combined summary to
+`results/defense_demo/latest_summary.json`.
+
 MemoryBank visual comparison:
 
 ```bash
