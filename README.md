@@ -158,7 +158,7 @@ examples in one command.
 |---|---|---|
 | Query routing example | `statebudgetmem route "我现在还喜欢吃辣吗?"` | Offline rule router by default. Add `--mode llm` only when API settings are available. |
 | Routing prompt debug | `python tools/routing/debug_routing.py --dry-run --query "我的饮食习惯是怎么变化的?"` | Prints prompt/debug information without calling an API. |
-| Views experiment only | `python tools/views/run_views_experiment.py` | Requires the project to be installed, or run with `PYTHONPATH=src`. Writes under `results/views/`. |
+| Views experiment only | `python tools/views/run_views_experiment.py --routing rule` | Requires the project to be installed, or run with `PYTHONPATH=src`. Use `--routing oracle`, `rule`, or `llm`; writes under `results/views/`. |
 | TF-IDF stale analysis | `statebudgetmem analyze-staleness --backend tfidf` | Offline; writes under `results/staleness/`. |
 | MemoryBank evaluation | `statebudgetmem evaluate-memorybank --output results/memorybank/evaluation.json` | Uses mock LLM offline unless `--online` is set; optional MemoryBank dependencies are required. |
 | MemoryBank utility wrapper | `python tools/memorybank/run_evaluation.py --output results/memorybank/evaluation.json` | Original-style thin wrapper around the MemoryBank evaluator. |

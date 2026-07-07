@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from statistics import mean
-from typing import Any
+from typing import Any, Literal
 
 from statebudgetmem.data import load_scenarios
 from statebudgetmem.evaluation.metrics import (
@@ -18,12 +18,20 @@ from statebudgetmem.evaluation.metrics import (
     valid_recall_at_k,
 )
 from statebudgetmem.interfaces import MemoryMethod
+from statebudgetmem.routing import (
+    LLMQueryRouter,
+    QueryRecord as RoutingQueryRecord,
+    RuleBasedRouter,
+)
+from statebudgetmem.schemas import QueryRecord, QueryType
 from statebudgetmem.views.methods import (
     CurrentOnlyMemoryMethod,
     DualViewMemoryMethod,
     FlatViewMemoryMethod,
     HistoryOnlyMemoryMethod,
 )
+
+RoutingMode = Literal["oracle", "rule", "llm"]
 
 
 @dataclass(frozen=True)
@@ -34,6 +42,7 @@ class ViewsExperimentConfig:
     results_dir: Path
     methods: tuple[str, ...] = ("flat", "current", "dual")
     token_budget: int | None = None
+    routing: RoutingMode = "oracle"
 
 
 def build_view_method(name: str) -> MemoryMethod:
@@ -58,6 +67,8 @@ def run_views_experiment(config: ViewsExperimentConfig) -> dict[str, Any]:
     if config.top_k < 1:
         raise ValueError("top_k must be at least 1")
 
+    routing_mode = _normalize_routing_mode(config.routing)
+    router = _build_router(routing_mode)
     scenarios = load_scenarios(config.dataset_path)
 
     run_id = _run_id(config)
@@ -77,8 +88,9 @@ def run_views_experiment(config: ViewsExperimentConfig) -> dict[str, Any]:
             method.ingest(scenario.memories)
 
             for query in scenario.queries:
+                routed_query = _route_query(query, routing_mode, router)
                 result = method.retrieve(
-                    query,
+                    routed_query,
                     top_k=config.top_k,
                     token_budget=config.token_budget,
                 )
@@ -93,9 +105,11 @@ def run_views_experiment(config: ViewsExperimentConfig) -> dict[str, Any]:
                         "scenario_id": scenario.scenario_id,
                         "query_id": query.query_id,
                         "query_text": query.text,
-                        "query_type": query.query_type.value,
+                        "query_type": routed_query.query_type.value,
+                        "oracle_query_type": query.query_type.value,
+                        "predicted_query_type": routed_query.query_type.value,
                         "reference_time": query.reference_time.isoformat(),
-                        "routing_mode": "oracle_query_type",
+                        "routing_mode": routing_mode,
                         "method": result.method_name,
                         "retrieved_memory_ids": retrieved_ids,
                         "retrieved_scores": [
@@ -227,7 +241,7 @@ def _summary_row(
         "run_id": run_id,
         "method": method,
         "query_type": query_type,
-        "routing_mode": "oracle_query_type",
+        "routing_mode": _normalize_routing_mode(config.routing),
         "query_count": len(selected),
         "mean_recall_at_k": _mean(selected, "recall_at_k"),
         "mean_valid_recall_at_k": _mean(selected, "valid_recall_at_k"),
@@ -262,7 +276,48 @@ def _mean(rows: list[dict[str, Any]], key: str) -> float:
 def _run_id(config: ViewsExperimentConfig) -> str:
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     method_part = "_".join(config.methods)
-    return f"views_{method_part}_seed{config.random_seed}_k{config.top_k}_{timestamp}"
+    routing = _normalize_routing_mode(config.routing)
+    return (
+        f"views_{method_part}_{routing}_seed{config.random_seed}_k{config.top_k}_"
+        f"{timestamp}"
+    )
+
+
+def _normalize_routing_mode(routing: str) -> RoutingMode:
+    normalized = routing.strip().lower()
+    if normalized == "oracle_query_type":
+        normalized = "oracle"
+    if normalized not in {"oracle", "rule", "llm"}:
+        raise ValueError("routing must be one of: oracle, rule, llm")
+    return normalized  # type: ignore[return-value]
+
+
+def _build_router(routing: RoutingMode) -> Any | None:
+    if routing == "oracle":
+        return None
+    if routing == "rule":
+        return RuleBasedRouter(fallback_type=QueryType.GENERAL)
+    if routing == "llm":
+        return LLMQueryRouter(fallback_type=QueryType.GENERAL)
+    raise ValueError("routing must be one of: oracle, rule, llm")
+
+
+def _route_query(
+    query: QueryRecord,
+    routing: RoutingMode,
+    router: Any | None,
+) -> QueryRecord:
+    if routing == "oracle":
+        return query
+    if router is None:
+        raise ValueError("router is required for non-oracle routing")
+
+    routing_query = RoutingQueryRecord(
+        text=query.text,
+        reference_time=query.reference_time.isoformat(),
+    )
+    predicted_type = router.classify(routing_query)
+    return query.model_copy(update={"query_type": predicted_type})
 
 
 def _git_commit() -> str | None:

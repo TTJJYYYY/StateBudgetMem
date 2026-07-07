@@ -30,6 +30,15 @@ def parse_args() -> argparse.Namespace:
         choices=["flat", "current", "history", "dual"],
     )
     parser.add_argument("--token-budget", type=int)
+    parser.add_argument(
+        "--routing",
+        choices=["oracle", "rule", "llm"],
+        default="oracle",
+        help=(
+            "Query type source: oracle uses dataset labels, rule uses the "
+            "offline rule router, llm uses LLMQueryRouter with fallback."
+        ),
+    )
     return parser.parse_args()
 
 
@@ -43,6 +52,7 @@ def main() -> int:
             results_dir=args.results_dir,
             methods=tuple(args.methods),
             token_budget=args.token_budget,
+            routing=args.routing,
         )
     )
 
@@ -51,7 +61,7 @@ def main() -> int:
     print(f"  raw           : {result['raw_path']}")
     print(f"  summary JSON  : {result['summary_json_path']}")
     print(f"  summary CSV   : {result['summary_csv_path']}")
-    print("  routing       : oracle_query_type")
+    print(f"  routing       : {args.routing}")
     return 0
 
 

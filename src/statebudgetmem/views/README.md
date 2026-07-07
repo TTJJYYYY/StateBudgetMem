@@ -373,10 +373,19 @@ PYTHONPATH=src python tools/views/run_views_experiment.py \
   --dataset data/controlled/temporal_challenge_v1.jsonl \
   --top-k 3 \
   --seed 42 \
+  --routing rule \
   --results-dir results/views
 ```
 
-默认比较三种方法。当前实验使用数据集中的 `QueryRecord.query_type` 作为 oracle routing（金标签路由），不是 Routing 模块的真实预测结果：
+默认比较三种方法。实验可通过 `--routing` 选择 query type 来源：
+
+```text
+oracle  - 使用数据集中的 QueryRecord.query_type 作为金标签路由
+rule    - 使用 routing.RuleBasedRouter 离线预测 query_type
+llm     - 使用 routing.LLMQueryRouter 预测 query_type，无 API 配置时按 fallback 策略降级
+```
+
+原始结果会同时保存 `query_type` / `predicted_query_type` 和 `oracle_query_type`，便于比较真实路由预测和金标签路由差异：
 
 ```text
 flat
@@ -390,6 +399,7 @@ dual
 PYTHONPATH=src python tools/views/run_views_experiment.py \
   --dataset data/controlled/temporal_challenge_v1.jsonl \
   --methods flat current dual \
+  --routing oracle \
   --top-k 3
 ```
 
