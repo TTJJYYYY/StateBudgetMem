@@ -23,6 +23,8 @@ Implemented:
 - structured memory preprocessing;
 - state-versioning engine and tests;
 - rule-based and LLM query routing;
+- method-independent answer-level metrics for answer accuracy, stale usage,
+  and current/historical/change accuracy;
 - shared schemas, interfaces, metrics, CLI, and preserved experiment outputs.
 
 Next major stage:
