@@ -620,39 +620,60 @@ class MemoryBank(MemorySystem):
         return events
 
     def build_augmented_prompt(self, query: str, current_time: Optional[str] = None,
-                               top_k: int = 5, include_portrait: bool = True) -> Dict[str, str]:
-        """构建增强 prompt"""
+                               top_k: int = 5, include_portrait: bool = True) -> Dict[str, Any]:
+        """Build the MemoryBank-style memory-augmented prompt."""
         memories = self.retrieve(query, top_k=top_k, current_time=current_time)
         memory_text = "\n".join([
             f"[{m['memory_type']}] {m['content']}"
             for m in memories
         ]) if memories else "（无相关历史记忆）"
 
-        context_parts = []
-        if include_portrait and self.user_portrait:
-            context_parts.append(f"【用户画像】{self.user_portrait}")
-        if self.global_summary:
-            context_parts.append(f"【事件摘要】{self.global_summary}")
+        global_user_portrait = self.user_portrait if include_portrait else ""
+        global_event_summary = self.global_summary
+        prompt_sections = {
+            "relevant_memories": memory_text,
+            "global_user_portrait": global_user_portrait or "（无全局用户画像）",
+            "global_event_summary": global_event_summary or "（无全局事件摘要）",
+            "current_user_query": query,
+        }
 
-        system_context = "\n".join(context_parts)
+        system_context = "\n".join(
+            part
+            for part in (
+                f"【相关历史记忆】\n{prompt_sections['relevant_memories']}",
+                f"【全局用户画像】\n{prompt_sections['global_user_portrait']}",
+                f"【全局事件摘要】\n{prompt_sections['global_event_summary']}",
+            )
+            if part
+        )
 
         prompt = f"""你是一个有长期记忆的AI助手。请参考以下信息来回答用户的问题。
 
-{system_context}
-
 【相关历史记忆】
-{memory_text}
+{prompt_sections['relevant_memories']}
+
+【全局用户画像】
+{prompt_sections['global_user_portrait']}
+
+【全局事件摘要】
+{prompt_sections['global_event_summary']}
 
 【用户当前问题】
-{query}
+{prompt_sections['current_user_query']}
 
-请基于历史记忆和当前问题，给出个性化、连贯的回答。"""
+请基于相关记忆、用户画像、事件摘要和当前问题，给出个性化、连贯的回答。"""
 
         return {
             "system_context": system_context,
             "relevant_memories": memory_text,
+            "global_user_portrait": global_user_portrait,
+            "global_event_summary": global_event_summary,
+            "current_user_query": query,
+            "prompt_sections": prompt_sections,
             "prompt_template": prompt,
             "retrieved_count": len(memories),
+            "retrieved_memory_ids": [m.get("memory_id") for m in memories],
+            "retrieved_memories": memories,
         }
 
 

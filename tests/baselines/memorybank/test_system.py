@@ -222,3 +222,40 @@ def test_memorybank_forgetting_log_records_retention_and_forgotten_ids() -> None
 
     legacy = MemoryBank.update_forgetting(memory, current_time="2026-06-10 10:00")
     assert all("retention" in row for row in legacy)
+
+
+def test_memorybank_build_augmented_prompt_matches_paper_sections() -> None:
+    from statebudgetmem.baselines.memorybank.system import MemoryBank
+
+    memory = object.__new__(MemoryBank)
+    memory.user_portrait = "The user is health-conscious and likes concise advice."
+    memory.global_summary = "Recent events: the user asked for meal planning help."
+    memory.retrieve = lambda query, top_k=5, current_time=None: [
+        {
+            "memory_id": "m_diet",
+            "memory_type": "dialog",
+            "content": "User should avoid spicy food this week.",
+            "composite_score": 0.91,
+        }
+    ]
+
+    result = MemoryBank.build_augmented_prompt(
+        memory,
+        query="What should I eat tonight?",
+        current_time="2026-06-21 18:00",
+        top_k=3,
+    )
+
+    prompt = result["prompt_template"]
+    assert result["retrieved_count"] == 1
+    assert result["retrieved_memory_ids"] == ["m_diet"]
+    assert result["global_user_portrait"] == memory.user_portrait
+    assert result["global_event_summary"] == memory.global_summary
+    assert result["current_user_query"] == "What should I eat tonight?"
+    assert result["prompt_sections"]["relevant_memories"].startswith("[dialog]")
+
+    memory_pos = prompt.index("【相关历史记忆】")
+    portrait_pos = prompt.index("【全局用户画像】")
+    summary_pos = prompt.index("【全局事件摘要】")
+    query_pos = prompt.index("【用户当前问题】")
+    assert memory_pos < portrait_pos < summary_pos < query_pos

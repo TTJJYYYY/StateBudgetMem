@@ -84,6 +84,53 @@ through `MemoryBank.retrieve()` and records retrieved IDs, semantic score,
 composite score, time decay, strength, latency, and index size. Use
 `--skip-retrieval` to build storage only.
 
+`MemoryBank.build_augmented_prompt()` then organizes the retrieved memories,
+global user portrait, global event summary, and current query into a
+MemoryBank-style prompt. The method returns structured prompt sections and raw
+retrieval rows, so the first reproduction stage can evaluate retrieval without
+calling an LLM.
+
+Formal local/on-device reproduction runner:
+
+```bash
+python tools/memorybank/run_ondevice_reproduction.py
+```
+
+This uses the built-in paper-aligned sample until the formal dataset is ready
+and writes:
+
+```text
+results/memorybank/ondevice/raw/*.jsonl
+results/memorybank/ondevice/summaries/*.json
+results/memorybank/ondevice/resources/*.json
+```
+
+The summary includes first-stage proxies for the MemoryBank paper metrics
+(`memory_retrieval_accuracy`, `response_correctness`, and
+`contextual_coherence`) plus on-device metrics such as retrieval latency, FAISS
+index size, local storage size, prompt token cost, peak traced memory, and stale
+retrieval rate. See `docs/memorybank_reproduction.md` for the approximation
+limits before the formal dataset is available.
+
+Budget sweep for on-device constraints:
+
+```bash
+python tools/memorybank/run_budget_sweep.py
+```
+
+This sweeps `top_k`, `prompt_token_budget`, `memory_count`, and
+`forgetting_threshold`, then writes raw rows, grouped summaries, and resource
+logs under:
+
+```text
+results/memorybank/budget_sweep/
+```
+
+Use `--quick` for a small smoke run. The full default grid is intentionally
+larger because this experiment is meant to show how tight local budgets affect
+retrieval quality, stale-memory exposure, latency, index size, storage size, and
+prompt cost.
+
 Forgetting and reinforcement logging demo:
 
 ```bash

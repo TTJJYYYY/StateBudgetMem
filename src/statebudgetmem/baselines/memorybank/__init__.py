@@ -27,6 +27,15 @@ from statebudgetmem.baselines.memorybank.evaluator import (
     run_memora_batch,
     summarize_results,
 )
+from statebudgetmem.baselines.memorybank.metrics import (
+    MemoryBankMetricSpec,
+    contextual_coherence,
+    evaluate_reproduction_row,
+    memory_retrieval_accuracy,
+    response_correctness,
+    stale_retrieval_rate_by_keywords,
+    summarize_metric_rows,
+)
 from statebudgetmem.baselines.memorybank.paper_storage import (
     DailySummary,
     DialogTurn,
@@ -65,6 +74,13 @@ __all__ = [
     "summarize_results",
     "print_summary",
     "run_memora_batch",
+    "MemoryBankMetricSpec",
+    "contextual_coherence",
+    "evaluate_reproduction_row",
+    "memory_retrieval_accuracy",
+    "response_correctness",
+    "stale_retrieval_rate_by_keywords",
+    "summarize_metric_rows",
     "DailySummary",
     "DialogTurn",
     "PaperStorageSpec",
