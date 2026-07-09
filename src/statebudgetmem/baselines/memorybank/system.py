@@ -379,6 +379,8 @@ class MemoryBank(MemorySystem):
             age_hours = (now - mem.timestamp) / 3600.0
             time_decay = math.exp(-age_hours / 168)  # 一周衰减
             semantic_score = float(dist)
+            before_strength = mem.strength
+            before_last_accessed = mem.last_accessed
             strength_factor = 1 + mem.strength * 0.3
             composite_score = semantic_score * strength_factor * time_decay
 
@@ -387,6 +389,8 @@ class MemoryBank(MemorySystem):
             mem.last_accessed = now
             mem.access_count += 1
             self.access_count += 1
+            after_strength = mem.strength
+            after_last_accessed = mem.last_accessed
 
             candidates.append({
                 "memory_id": mem.memory_id,
@@ -397,6 +401,12 @@ class MemoryBank(MemorySystem):
                 "time_decay": round(time_decay, 6),
                 "strength_factor": round(strength_factor, 4),
                 "strength": mem.strength,
+                "before_strength": before_strength,
+                "after_strength": after_strength,
+                "before_last_accessed": before_last_accessed,
+                "after_last_accessed": after_last_accessed,
+                "query": query,
+                "recall_timestamp": now,
                 "status": mem.status.value,
                 "tags": mem.tags,
                 "timestamp": mem.timestamp,
@@ -406,6 +416,9 @@ class MemoryBank(MemorySystem):
         # 按综合分数排序
         candidates.sort(key=lambda x: x["composite_score"], reverse=True)
         candidates = candidates[:top_k]
+        for rank, item in enumerate(candidates, start=1):
+            item["retrieval_rank"] = rank
+            item["retrieval_score"] = item["composite_score"]
 
         # 应用 filters
         if filters:
@@ -534,27 +547,77 @@ class MemoryBank(MemorySystem):
         self, current_time: str | float | int | None = None
     ):
         """执行艾宾浩斯遗忘更新"""
-        if not self.memories:
-            return []
+        report = self.update_forgetting_with_log(current_time=current_time)
+        return [
+            {
+                "memory_id": row["memory_id"],
+                "content": row["content"][:50] + "...",
+                "retention": round(row["retention"], 4),
+            }
+            for row in report["events"]
+            if row["is_forgotten"]
+        ]
 
+    def update_forgetting_with_log(
+        self, current_time: str | float | int | None = None
+    ) -> Dict[str, Any]:
+        """Run forgetting and return machine-readable retention events."""
         now = self._parse_time(current_time) if current_time is not None else time.time()
-        forgotten = []
+        events = self._forgetting_events(now)
+        forgotten_memory_ids = [
+            row["memory_id"] for row in events if row["is_forgotten"]
+        ]
 
+        for row in events:
+            if not row["is_forgotten"]:
+                continue
+            mem = self.memories_by_id.get(row["memory_id"])
+            if mem is None:
+                continue
+            mem.strength *= 0.5
+            self.forget_count += 1
+
+        return {
+            "current_time": now,
+            "threshold": self.forgetting_threshold,
+            "forgotten_memory_ids": forgotten_memory_ids,
+            "events": events,
+        }
+
+    def forgetting_log(
+        self, current_time: str | float | int | None = None
+    ) -> Dict[str, Any]:
+        """Compute retention events without mutating memory strengths."""
+        now = self._parse_time(current_time) if current_time is not None else time.time()
+        events = self._forgetting_events(now)
+        return {
+            "current_time": now,
+            "threshold": self.forgetting_threshold,
+            "forgotten_memory_ids": [
+                row["memory_id"] for row in events if row["is_forgotten"]
+            ],
+            "events": events,
+        }
+
+    def _forgetting_events(self, now: float) -> List[Dict[str, Any]]:
+        events = []
         for mem in self.memories:
-            t = (now - mem.last_accessed) / 3600.0
-            S = mem.strength
-            retention = math.exp(-t / S) if S > 0 else 0
-
-            if retention < self.forgetting_threshold:
-                mem.strength *= 0.5
-                forgotten.append({
+            elapsed_hours = (now - mem.last_accessed) / 3600.0
+            strength = mem.strength
+            retention = math.exp(-elapsed_hours / strength) if strength > 0 else 0.0
+            events.append(
+                {
                     "memory_id": mem.memory_id,
-                    "content": mem.content[:50] + "...",
-                    "retention": round(retention, 4),
-                })
-                self.forget_count += 1
-
-        return forgotten
+                    "content": mem.content,
+                    "strength": strength,
+                    "last_accessed": mem.last_accessed,
+                    "elapsed_hours": elapsed_hours,
+                    "retention": retention,
+                    "is_forgotten": retention < self.forgetting_threshold,
+                    "threshold": self.forgetting_threshold,
+                }
+            )
+        return events
 
     def build_augmented_prompt(self, query: str, current_time: Optional[str] = None,
                                top_k: int = 5, include_portrait: bool = True) -> Dict[str, str]:

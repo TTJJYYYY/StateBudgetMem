@@ -70,6 +70,31 @@ statebudgetmem analyze-staleness --backend tfidf
 python tools/memorybank/analyze_staleness.py --mode demo
 ```
 
+Paper-aligned local storage smoke reproduction:
+
+```bash
+python tools/memorybank/build_paper_storage.py
+```
+
+This builds the three storage layers described in the MemoryBank paper without
+calling any cloud API: raw dialog memories, fixed local event summaries, and a
+fixed local user portrait. It writes a machine-readable report under
+`results/memorybank/paper_storage/`. By default it also runs one retrieval probe
+through `MemoryBank.retrieve()` and records retrieved IDs, semantic score,
+composite score, time decay, strength, latency, and index size. Use
+`--skip-retrieval` to build storage only.
+
+Forgetting and reinforcement logging demo:
+
+```bash
+python tools/memorybank/run_memorybank_forgetting_demo.py
+```
+
+This writes reinforcement and forgetting JSONL logs plus a summary under
+`results/memorybank/forgetting_demo/`. See
+`docs/memorybank_reproduction.md` for field definitions and known
+approximation limits.
+
 ## Preserved original result summary
 
 The former branch recorded a weekly Memora subset over five personas and 75
