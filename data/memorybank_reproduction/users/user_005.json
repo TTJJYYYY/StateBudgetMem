@@ -329,5 +329,10 @@
 
 
     "global_user_portrait":
-    "Jack is an ambitious and adaptable person who carefully considers career development and enjoys combining technology with business."
+    "Jack is an ambitious and adaptable person who carefully considers career development and enjoys combining technology with business.",
+
+    "global_memory_ids": {
+    "event_summary_id": "user_005_global_event_summary",
+    "portrait_id": "user_005_global_user_portrait"
+    }
 }
