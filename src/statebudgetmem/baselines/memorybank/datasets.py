@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -255,6 +256,8 @@ __all__ = [
     "Probe",
     "ReproductionProbe",
     "ReproductionUser",
+    "REPRODUCTION_QUESTION_TYPES",
+    "REQUIRED_PER_USER_QUESTION_TYPES",
     "DEMO_HISTORY",
     "DEMO_QUESTIONS",
     "load_json_dataset",
@@ -262,12 +265,44 @@ __all__ = [
     "load_memora_data",
     "load_reproduction_dataset",
     "load_user_file",
+    "build_reproduction_memory_catalog",
+    "validate_reproduction_probes",
+    "reproduction_dataset_stats",
 ]
 
 # ── Phase 1 Reproduction Dataset ────────────────────────────────────────
 
-from dataclasses import dataclass, field
-from typing import Optional
+REPRODUCTION_QUESTION_TYPES = frozenset(
+    {
+        "memory_recall",
+        "event_summary",
+        "user_portrait",
+        "negative_memory",
+        "temporal_memory",
+    }
+)
+
+REQUIRED_PER_USER_QUESTION_TYPES = frozenset(
+    {
+        "negative_memory",
+        "user_portrait",
+        "temporal_memory",
+    }
+)
+
+REPRODUCTION_PROBE_FIELDS = frozenset(
+    {
+        "query_id",
+        "user_id",
+        "question",
+        "reference_answer",
+        "gold_memory_ids",
+        "expected_keywords",
+        "question_type",
+    }
+)
+
+NEGATION_KEYWORDS = frozenset({"no", "not", "never", "没有", "未曾", "不是"})
 
 
 @dataclass
@@ -275,15 +310,15 @@ class ReproductionUser:
     """One user in the Phase 1 reproduction dataset."""
 
     user_id: str
-    profile: dict = field(default_factory=dict)
-    days: list[dict] = field(default_factory=list)
+    profile: dict[str, Any] = field(default_factory=dict)
+    days: list[dict[str, Any]] = field(default_factory=list)
     global_summary: str = ""
     user_portrait: str = ""
 
 
 @dataclass
 class ReproductionProbe:
-    """One probing question with gold labels."""
+    """One probing question with deterministic gold labels."""
 
     query_id: str
     user_id: str
@@ -297,17 +332,22 @@ class ReproductionProbe:
 def load_reproduction_dataset(
     dataset_dir: str | Path,
 ) -> tuple[list[ReproductionUser], list[ReproductionProbe]]:
-    """Load the Phase 1 reproduction dataset.
+    """Load and validate the formal Phase 1 reproduction dataset.
 
-    Expects:
+    Expected layout::
+
         {dataset_dir}/
         ├── users/
         │   ├── user_001.json
         │   └── ...
         └── probing_questions.jsonl
 
-    Returns ``(users, probes)`` after format validation.
+    Validation is intentionally strict because the probing questions are used
+    as gold labels by the Phase 1 evaluator. A dataset is rejected when query
+    IDs are duplicated, a gold memory ID does not exist, a negative question
+    has positive evidence, or a user lacks required B3 question coverage.
     """
+
     root = Path(dataset_dir)
     users_dir = root / "users"
     probes_path = root / "probing_questions.jsonl"
@@ -317,71 +357,426 @@ def load_reproduction_dataset(
     if not probes_path.is_file():
         raise FileNotFoundError(f"Probing questions not found: {probes_path}")
 
-    users: list[ReproductionUser] = []
-    for user_file in sorted(users_dir.glob("*.json")):
-        users.append(load_user_file(user_file))
+    user_files = sorted(users_dir.glob("*.json"))
+    if not user_files:
+        raise ValueError(f"No user JSON files found in: {users_dir}")
 
-    user_ids = {u.user_id for u in users}
+    users: list[ReproductionUser] = []
+    seen_user_ids: set[str] = set()
+    for user_file in user_files:
+        user = load_user_file(user_file)
+        if user.user_id in seen_user_ids:
+            raise ValueError(f"Duplicate user_id '{user.user_id}' in {user_file}")
+        seen_user_ids.add(user.user_id)
+        users.append(user)
+
     probes: list[ReproductionProbe] = []
     with probes_path.open("r", encoding="utf-8") as fh:
-        for line in fh:
-            line = line.strip()
+        for line_number, raw_line in enumerate(fh, start=1):
+            line = raw_line.strip()
             if not line:
                 continue
-            data = json.loads(line)
-            probe = ReproductionProbe(
-                query_id=str(data["query_id"]),
-                user_id=str(data["user_id"]),
-                question=str(data["question"]),
-                reference_answer=str(data.get("reference_answer", "")),
-                gold_memory_ids=[
-                    str(mid) for mid in data.get("gold_memory_ids", [])
-                ],
-                expected_keywords=[
-                    str(kw) for kw in data.get("expected_keywords", [])
-                ],
-                question_type=str(data.get("question_type", "memory_recall")),
-            )
-            if probe.user_id not in user_ids:
+            try:
+                data = json.loads(line)
+            except json.JSONDecodeError as exc:
                 raise ValueError(
-                    f"Probe '{probe.query_id}' references unknown user "
-                    f"'{probe.user_id}'"
+                    f"Invalid JSON in {probes_path} at line {line_number}: {exc.msg}"
+                ) from exc
+            probes.append(
+                _parse_reproduction_probe(
+                    data,
+                    source=probes_path,
+                    line_number=line_number,
                 )
-            probes.append(probe)
+            )
 
-    # Validate at least one negative question exists per user
-    _validate_probe_types(probes, user_ids)
+    if not probes:
+        raise ValueError(f"No probing questions found in: {probes_path}")
 
+    validate_reproduction_probes(users, probes)
     return users, probes
 
 
 def load_user_file(path: str | Path) -> ReproductionUser:
-    """Load a single user JSON file into a ReproductionUser."""
-    with open(path, "r", encoding="utf-8") as fh:
+    """Load one user fixture and validate memory IDs needed by B3 labels."""
+
+    source = Path(path)
+    with source.open("r", encoding="utf-8") as fh:
         data = json.load(fh)
 
+    if not isinstance(data, dict):
+        raise ValueError(f"User file must contain a JSON object: {source}")
+
+    user_id = _required_string(data.get("user_id"), "user_id", source)
+    profile = data.get("profile", {})
+    days = data.get("days", [])
+    if not isinstance(profile, dict):
+        raise ValueError(f"User '{user_id}' profile must be a JSON object")
+    if not isinstance(days, list):
+        raise ValueError(f"User '{user_id}' days must be a JSON array")
+
     user = ReproductionUser(
-        user_id=str(data.get("user_id", "")),
-        profile=data.get("profile", {}),
-        days=data.get("days", []),
-        global_summary=str(data.get("global_event_summary", "")),
-        user_portrait=str(data.get("global_user_portrait", "")),
+        user_id=user_id,
+        profile=profile,
+        days=days,
+        global_summary=str(data.get("global_event_summary", "")).strip(),
+        user_portrait=str(data.get("global_user_portrait", "")).strip(),
     )
-    if not user.user_id:
-        raise ValueError(f"User file {path} missing 'user_id' field")
+
+    # Building the catalog here catches missing or duplicate dialog IDs early.
+    build_reproduction_memory_catalog([user])
     return user
 
 
-def _validate_probe_types(
-    probes: list[ReproductionProbe],
-    user_ids: set[str],
-) -> None:
-    """Check required question types exist for each user."""
-    for uid in user_ids:
-        user_probes = [p for p in probes if p.user_id == uid]
-        types = {p.question_type for p in user_probes}
-        if "negative_memory" not in types:
-            print(
-                f"[WARNING] User '{uid}' has no 'negative_memory' probe — "
-                f"consider adding one"
+def build_reproduction_memory_catalog(
+    users: list[ReproductionUser],
+) -> dict[str, dict[str, Any]]:
+    """Return every addressable gold-memory source keyed by memory ID.
+
+    Dialog turns use their explicit ``memory_id`` values. The two global
+    fixture layers use deterministic IDs matching the B2 build script:
+    ``<user_id>_global_event_summary`` and
+    ``<user_id>_global_user_portrait``.
+    """
+
+    catalog: dict[str, dict[str, Any]] = {}
+
+    def add_memory(memory_id: str, metadata: dict[str, Any]) -> None:
+        if memory_id in catalog:
+            previous = catalog[memory_id]
+            raise ValueError(
+                "Duplicate memory_id "
+                f"'{memory_id}' for users '{previous['user_id']}' and "
+                f"'{metadata['user_id']}'"
             )
+        catalog[memory_id] = metadata
+
+    for user in users:
+        if not user.user_id:
+            raise ValueError("Reproduction user_id must not be empty")
+
+        for day_index, day in enumerate(user.days, start=1):
+            if not isinstance(day, dict):
+                raise ValueError(
+                    f"User '{user.user_id}' day {day_index} must be a JSON object"
+                )
+            date = str(day.get("date", "")).strip()
+            dialogues = day.get("dialogues", [])
+            if not isinstance(dialogues, list):
+                raise ValueError(
+                    f"User '{user.user_id}' day {day_index} dialogues must be a list"
+                )
+
+            for dialogue_index, dialogue in enumerate(dialogues, start=1):
+                if not isinstance(dialogue, dict):
+                    raise ValueError(
+                        f"User '{user.user_id}' day {day_index} dialogue "
+                        f"{dialogue_index} must be a JSON object"
+                    )
+                memory_id = _required_string(
+                    dialogue.get("memory_id"),
+                    "memory_id",
+                    f"{user.user_id} day {day_index} dialogue {dialogue_index}",
+                )
+                if not memory_id.startswith(f"{user.user_id}_"):
+                    raise ValueError(
+                        f"Memory ID '{memory_id}' must start with "
+                        f"'{user.user_id}_'"
+                    )
+                add_memory(
+                    memory_id,
+                    {
+                        "user_id": user.user_id,
+                        "memory_type": "dialog",
+                        "content": str(dialogue.get("content", "")).strip(),
+                        "role": str(dialogue.get("role", "")).strip(),
+                        "timestamp": str(dialogue.get("timestamp", "")).strip(),
+                        "date": date,
+                    },
+                )
+
+        if user.global_summary:
+            memory_id = f"{user.user_id}_global_event_summary"
+            add_memory(
+                memory_id,
+                {
+                    "user_id": user.user_id,
+                    "memory_type": "global_event_summary",
+                    "content": user.global_summary,
+                },
+            )
+
+        if user.user_portrait:
+            memory_id = f"{user.user_id}_global_user_portrait"
+            add_memory(
+                memory_id,
+                {
+                    "user_id": user.user_id,
+                    "memory_type": "global_user_portrait",
+                    "content": user.user_portrait,
+                },
+            )
+
+    return catalog
+
+
+def validate_reproduction_probes(
+    users: list[ReproductionUser],
+    probes: list[ReproductionProbe],
+) -> None:
+    """Validate B3 gold labels and per-user question coverage."""
+
+    user_ids = {user.user_id for user in users}
+    if len(user_ids) != len(users):
+        raise ValueError("Reproduction users contain duplicate user_id values")
+
+    catalog = build_reproduction_memory_catalog(users)
+    seen_query_ids: set[str] = set()
+    coverage = {user_id: set() for user_id in user_ids}
+
+    for probe in probes:
+        if probe.query_id in seen_query_ids:
+            raise ValueError(f"Duplicate query_id '{probe.query_id}'")
+        seen_query_ids.add(probe.query_id)
+
+        if probe.user_id not in user_ids:
+            raise ValueError(
+                f"Probe '{probe.query_id}' references unknown user "
+                f"'{probe.user_id}'"
+            )
+        if probe.question_type not in REPRODUCTION_QUESTION_TYPES:
+            raise ValueError(
+                f"Probe '{probe.query_id}' has unsupported question_type "
+                f"'{probe.question_type}'. Expected one of "
+                f"{sorted(REPRODUCTION_QUESTION_TYPES)}"
+            )
+
+        _validate_probe_text_fields(probe)
+        _validate_probe_keywords(probe)
+
+        if probe.question_type == "negative_memory":
+            if probe.gold_memory_ids:
+                raise ValueError(
+                    f"Negative probe '{probe.query_id}' must have empty "
+                    "gold_memory_ids"
+                )
+            folded_keywords = {
+                keyword.casefold() for keyword in probe.expected_keywords
+            }
+            if not (folded_keywords & NEGATION_KEYWORDS):
+                raise ValueError(
+                    f"Negative probe '{probe.query_id}' needs an explicit "
+                    "negation keyword"
+                )
+            subject_keywords = folded_keywords - NEGATION_KEYWORDS
+            if not subject_keywords:
+                raise ValueError(
+                    f"Negative probe '{probe.query_id}' needs a "
+                    "question-specific keyword in addition to negation"
+                )
+            user_memory_text = " ".join(
+                str(metadata.get("content", ""))
+                for metadata in catalog.values()
+                if metadata["user_id"] == probe.user_id
+            ).casefold()
+            contradicted = [
+                keyword
+                for keyword in sorted(subject_keywords)
+                if keyword in user_memory_text
+            ]
+            if contradicted:
+                raise ValueError(
+                    f"Negative probe '{probe.query_id}' is contradicted by "
+                    f"stored memory text for keywords: {contradicted}"
+                )
+        elif not probe.gold_memory_ids:
+            raise ValueError(
+                f"Non-negative probe '{probe.query_id}' must contain at least "
+                "one gold_memory_id"
+            )
+
+        if len(set(probe.gold_memory_ids)) != len(probe.gold_memory_ids):
+            raise ValueError(
+                f"Probe '{probe.query_id}' contains duplicate gold_memory_ids"
+            )
+
+        for memory_id in probe.gold_memory_ids:
+            metadata = catalog.get(memory_id)
+            if metadata is None:
+                raise ValueError(
+                    f"Probe '{probe.query_id}' references unknown gold memory ID "
+                    f"'{memory_id}'"
+                )
+            if metadata["user_id"] != probe.user_id:
+                raise ValueError(
+                    f"Probe '{probe.query_id}' belongs to '{probe.user_id}' but "
+                    f"gold memory '{memory_id}' belongs to "
+                    f"'{metadata['user_id']}'"
+                )
+
+        coverage[probe.user_id].add(probe.question_type)
+
+    missing_overall = REPRODUCTION_QUESTION_TYPES - {
+        probe.question_type for probe in probes
+    }
+    if missing_overall:
+        raise ValueError(
+            "Dataset is missing required question types: "
+            f"{sorted(missing_overall)}"
+        )
+
+    coverage_errors: list[str] = []
+    for user_id, observed_types in sorted(coverage.items()):
+        missing = REQUIRED_PER_USER_QUESTION_TYPES - observed_types
+        if missing:
+            coverage_errors.append(f"{user_id}: {sorted(missing)}")
+    if coverage_errors:
+        raise ValueError(
+            "Per-user B3 question coverage is incomplete: "
+            + "; ".join(coverage_errors)
+        )
+
+
+def reproduction_dataset_stats(
+    users: list[ReproductionUser],
+    probes: list[ReproductionProbe],
+) -> dict[str, Any]:
+    """Build deterministic dataset statistics for build logs and tests."""
+
+    type_counts = {
+        question_type: sum(
+            probe.question_type == question_type for probe in probes
+        )
+        for question_type in sorted(REPRODUCTION_QUESTION_TYPES)
+    }
+    return {
+        "user_count": len(users),
+        "user_day_count": sum(len(user.days) for user in users),
+        "probe_count": len(probes),
+        "memory_source_count": len(build_reproduction_memory_catalog(users)),
+        "question_type_counts": type_counts,
+        "probes_per_user": {
+            user.user_id: sum(probe.user_id == user.user_id for probe in probes)
+            for user in users
+        },
+    }
+
+
+def _parse_reproduction_probe(
+    data: Any,
+    *,
+    source: Path,
+    line_number: int,
+) -> ReproductionProbe:
+    if not isinstance(data, dict):
+        raise ValueError(
+            f"Probe at {source}:{line_number} must be a JSON object"
+        )
+
+    missing = REPRODUCTION_PROBE_FIELDS - set(data)
+    if missing:
+        raise ValueError(
+            f"Probe at {source}:{line_number} is missing fields: "
+            f"{sorted(missing)}"
+        )
+
+    return ReproductionProbe(
+        query_id=_required_string(
+            data.get("query_id"), "query_id", f"{source}:{line_number}"
+        ),
+        user_id=_required_string(
+            data.get("user_id"), "user_id", f"{source}:{line_number}"
+        ),
+        question=_required_string(
+            data.get("question"), "question", f"{source}:{line_number}"
+        ),
+        reference_answer=_required_string(
+            data.get("reference_answer"),
+            "reference_answer",
+            f"{source}:{line_number}",
+        ),
+        gold_memory_ids=_required_string_list(
+            data.get("gold_memory_ids"),
+            "gold_memory_ids",
+            f"{source}:{line_number}",
+            allow_empty=True,
+        ),
+        expected_keywords=_required_string_list(
+            data.get("expected_keywords"),
+            "expected_keywords",
+            f"{source}:{line_number}",
+            allow_empty=False,
+        ),
+        question_type=_required_string(
+            data.get("question_type"),
+            "question_type",
+            f"{source}:{line_number}",
+        ),
+    )
+
+
+def _validate_probe_text_fields(probe: ReproductionProbe) -> None:
+    for field_name in ("query_id", "user_id", "question", "reference_answer"):
+        if not str(getattr(probe, field_name, "")).strip():
+            raise ValueError(
+                f"Probe '{probe.query_id or '<unknown>'}' has empty {field_name}"
+            )
+
+
+def _validate_probe_keywords(probe: ReproductionProbe) -> None:
+    normalized: list[str] = []
+    for keyword in probe.expected_keywords:
+        cleaned = keyword.strip()
+        if len(cleaned) < 2:
+            raise ValueError(
+                f"Probe '{probe.query_id}' has an overly broad keyword "
+                f"'{keyword}'"
+            )
+        normalized.append(cleaned.casefold())
+
+    if len(set(normalized)) != len(normalized):
+        raise ValueError(
+            f"Probe '{probe.query_id}' contains duplicate expected_keywords"
+        )
+
+    reference = probe.reference_answer.casefold()
+    missing = [
+        keyword
+        for keyword, folded in zip(probe.expected_keywords, normalized)
+        if folded not in reference
+    ]
+    if missing:
+        raise ValueError(
+            f"Probe '{probe.query_id}' expected_keywords are not supported by "
+            f"reference_answer: {missing}"
+        )
+
+
+def _required_string(value: Any, field_name: str, source: Any) -> str:
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError(f"{source} has invalid or empty '{field_name}'")
+    return value.strip()
+
+
+def _required_string_list(
+    value: Any,
+    field_name: str,
+    source: Any,
+    *,
+    allow_empty: bool,
+) -> list[str]:
+    if not isinstance(value, list):
+        raise ValueError(f"{source} field '{field_name}' must be a JSON array")
+
+    result: list[str] = []
+    for index, item in enumerate(value):
+        if not isinstance(item, str) or not item.strip():
+            raise ValueError(
+                f"{source} field '{field_name}' item {index} must be a "
+                "non-empty string"
+            )
+        result.append(item.strip())
+
+    if not allow_empty and not result:
+        raise ValueError(f"{source} field '{field_name}' must not be empty")
+    return result
