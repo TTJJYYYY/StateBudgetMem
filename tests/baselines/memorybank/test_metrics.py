@@ -68,3 +68,27 @@ def test_evaluate_reproduction_row_and_summary_include_paper_and_device_metrics(
     assert summary["mean_retrieval_latency_ms"] == 2.5
     assert summary["mean_faiss_index_size"] == 7.0
     assert summary["mean_prompt_token_cost"] == 42.0
+
+
+def test_gold_context_summary_averages_only_applicable_rows() -> None:
+    summary = summarize_metric_rows(
+        [
+            {
+                "context_coverage": 1.0,
+                "has_context_gold": True,
+                "overall_context_coverage": 1.0,
+                "has_any_gold": True,
+            },
+            {
+                "context_coverage": 0.0,
+                "has_context_gold": False,
+                "overall_context_coverage": 0.0,
+                "has_any_gold": False,
+            },
+        ]
+    )
+
+    assert summary["context_coverage"] == 1.0
+    assert summary["context_gold_applicable_count"] == 1.0
+    assert summary["overall_context_coverage"] == 1.0
+    assert summary["overall_gold_applicable_count"] == 1.0

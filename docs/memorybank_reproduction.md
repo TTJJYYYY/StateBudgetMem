@@ -327,3 +327,57 @@ python -m pytest tests/baselines/memorybank/test_budget_sweep.py -q
 
 The deterministic tests avoid real waiting and do not require downloading an
 embedding model.
+
+## Phase 1 Formal Runner Isolation And Gold Metrics
+
+`tools/memorybank/run_phase1_baseline.py` now treats the formal reproduction as
+a multi-user experiment with strict per-user isolation:
+
+- `banks_by_user_id: dict[str, MemoryBank]` stores one independent bank per
+  `user_id`.
+- Dialogues, event summaries, global event summary, and user portrait are
+  written only into that user's bank.
+- Every probe selects the bank from `probe["user_id"]`; cross-user retrieval is
+  prohibited.
+- Raw rows include `user_id`, `user_memory_count`, `user_index_size`, and
+  `bank_isolation_enabled=true`.
+- Summary/resources include `user_count`, `per_user_memory_counts`,
+  `per_user_index_sizes`, and `total_index_size`.
+- `mean_faiss_index_size` is computed from each probe's selected user bank
+  size, not from a combined all-user index.
+
+Query time is resolved as follows:
+
+1. Explicit `--current-time` overrides every probe and records
+   `query_time_source="cli_override"`.
+2. Otherwise, `probe["query_timestamp"]` is used when present and records
+   `query_time_source="probe"`.
+3. If neither exists, the fallback is the selected user's latest written memory
+   timestamp plus 24 hours, recorded as
+   `query_time_source="derived_after_last_memory"`.
+
+In default formal mode, any memory timestamp later than the resolved
+`query_timestamp` is filtered before retrieval. Raw rows record
+`future_memory_ids_excluded` and `future_memory_count_excluded`.
+
+The runner separates gold labels by how they can enter the answer context:
+
+- `gold_retrieval_ids`: gold IDs found in the user's visible retrievable
+  `MemoryPiece` records.
+- `gold_context_ids`: gold IDs matching the stable global event summary or
+  global user portrait context IDs.
+- `unknown_gold_ids`: gold IDs not found in either category.
+- `provided_context_ids`: stable summary/portrait IDs that were inserted into
+  the prompt outside retrieval.
+
+Primary Phase 1 gold metrics are `retrieval_gold_precision`,
+`retrieval_gold_recall`, `retrieval_gold_f1`, `context_coverage`, and
+`overall_context_coverage`. Legacy `gold_precision`, `gold_recall`, and
+`gold_f1` remain for compatibility only because they compare original gold IDs
+directly with retrieved IDs and therefore undercount prompt context IDs. For
+negative questions with empty gold labels, the new retrieval/context gold
+metrics return `0.0` rather than treating empty recall as automatically
+perfect.
+
+The formal runner still does not call a local generation LLM. Rows, summaries,
+and resources record `llm_called=false`.

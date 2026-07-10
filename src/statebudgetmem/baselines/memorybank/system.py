@@ -405,6 +405,13 @@ class MemoryBank(MemorySystem):
         query_emb = self._get_embedding(query)
 
         allowed_memory_types = set(memory_types or [])
+        active_filters = dict(filters or {})
+        max_timestamp_filter = active_filters.pop("max_timestamp", None)
+        max_timestamp = (
+            self._parse_time(max_timestamp_filter)
+            if max_timestamp_filter is not None
+            else None
+        )
         retention_time_unit_hours = self.decay_interval_sec / 3600.0
         search_k = min(max(top_k * 3, top_k), self.index.ntotal)
         candidates: List[Dict[str, Any]] = []
@@ -428,11 +435,13 @@ class MemoryBank(MemorySystem):
                     continue
                 if allowed_memory_types and mem.memory_type.value not in allowed_memory_types:
                     continue
+                if max_timestamp is not None and mem.timestamp > max_timestamp:
+                    continue
                 raw_candidates.append((mem, float(dist)))
                 seen_ids.add(mid)
 
-            if filters:
-                filtered = filter_memories([mem for mem, _ in raw_candidates], filters)
+            if active_filters:
+                filtered = filter_memories([mem for mem, _ in raw_candidates], active_filters)
                 allowed_ids = {mem.memory_id for mem in filtered}
                 raw_candidates = [
                     (mem, dist)
@@ -759,6 +768,7 @@ class MemoryBank(MemorySystem):
         top_k: int = 5,
         include_portrait: bool = True,
         exclude_forgotten: bool = False,
+        filters: Optional[Dict] = None,
     ) -> Dict[str, Any]:
         """Build the MemoryBank-style memory-augmented prompt."""
         retrieval_result = self.retrieve_with_metadata(
@@ -766,6 +776,7 @@ class MemoryBank(MemorySystem):
             top_k=top_k,
             current_time=current_time,
             exclude_forgotten=exclude_forgotten,
+            filters=filters,
         )
         memories = retrieval_result["memories"]
         memory_text = "\n".join([
@@ -775,6 +786,15 @@ class MemoryBank(MemorySystem):
 
         global_user_portrait = self.user_portrait if include_portrait else ""
         global_event_summary = self.global_summary
+        provided_context_ids = []
+        if global_user_portrait:
+            portrait_id = getattr(self, "user_portrait_id", None)
+            if portrait_id:
+                provided_context_ids.append(str(portrait_id))
+        if global_event_summary:
+            summary_id = getattr(self, "global_summary_id", None)
+            if summary_id:
+                provided_context_ids.append(str(summary_id))
         prompt_sections = {
             "relevant_memories": memory_text,
             "global_user_portrait": global_user_portrait or "（无全局用户画像）",
@@ -819,6 +839,7 @@ class MemoryBank(MemorySystem):
             "retrieved_count": len(memories),
             "retrieved_memory_ids": [m.get("memory_id") for m in memories],
             "retrieved_memories": memories,
+            "provided_context_ids": provided_context_ids,
             "prompt_token_estimate": _estimate_token_count(prompt),
             "forgotten_memory_ids": retrieval_result["forgotten_memory_ids"],
             "excluded_forgotten_memory_ids": retrieval_result[

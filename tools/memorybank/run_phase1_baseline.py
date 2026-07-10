@@ -150,8 +150,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--retention-time-unit-hours", type=float, default=24.0)
     parser.add_argument(
         "--current-time",
-        default="2026-06-24 10:00",
-        help="Reference time for retrieval.",
+        default=None,
+        help=(
+            "Optional explicit reference time for every probe. When omitted, "
+            "the runner uses probe query_timestamp or derives after the user's "
+            "last written memory."
+        ),
     )
     return parser.parse_args(argv)
 
@@ -179,15 +183,15 @@ def main(argv: list[str] | None = None) -> int:
     tracemalloc.start()
     started = time.perf_counter()
 
-    # 1. Build MemoryBank
-    memory_bank = _build_memory_bank(args)
     dataset_source = (
         "built_in_smoke_sample" if args.smoke else str(args.dataset_dir)
     )
 
-    # 2. Ingest data
+    # 1. Build isolated MemoryBank instances and ingest data
     if args.smoke:
+        memory_bank = _build_memory_bank(args)
         build_paper_aligned_storage(memory_bank, default_paper_storage_spec())
+        banks_by_user_id = {"smoke_user": memory_bank}
         probes = SMOKE_PROBES
     else:
         from statebudgetmem.baselines.memorybank.datasets import (
@@ -197,7 +201,11 @@ def main(argv: list[str] | None = None) -> int:
         if args.quick:
             users = users[:1]
             probes_data = [p for p in probes_data if p.user_id == users[0].user_id]
-        _ingest_users(memory_bank, users)
+        banks_by_user_id = {}
+        for user in users:
+            user_bank = _build_memory_bank(args)
+            _ingest_user(user_bank, user)
+            banks_by_user_id[user.user_id] = user_bank
         probes = [
             {
                 "query_id": p.query_id,
@@ -207,13 +215,14 @@ def main(argv: list[str] | None = None) -> int:
                 "gold_memory_ids": p.gold_memory_ids,
                 "expected_keywords": p.expected_keywords,
                 "question_type": p.question_type,
+                "query_timestamp": p.query_timestamp,
             }
             for p in probes_data
         ]
 
-    # 3. Run probes
+    # 2. Run probes
     rows = _run_probes(
-        memory_bank,
+        banks_by_user_id,
         probes,
         args,
         run_id=run_id,
@@ -223,7 +232,7 @@ def main(argv: list[str] | None = None) -> int:
     _, peak_memory = tracemalloc.get_traced_memory()
     tracemalloc.stop()
 
-    # 4. Output
+    # 3. Output
     _write_jsonl(raw_path, rows)
     summary = _build_summary(rows, run_id, args, raw_path, summary_path,
                              csv_path, resources_path, elapsed_ms, dataset_source)
@@ -231,7 +240,7 @@ def main(argv: list[str] | None = None) -> int:
     _write_csv(csv_path, rows)
     resources = _build_resources(args, run_id, rows, raw_path, summary_path,
                                  resources_path, elapsed_ms, peak_memory,
-                                 memory_bank, dataset_source)
+                                 banks_by_user_id, dataset_source)
     _write_json(resources_path, resources)
 
     print(json.dumps(summary, ensure_ascii=False, indent=2))
@@ -269,7 +278,10 @@ def _build_memory_bank(args: argparse.Namespace) -> MemoryBank:
                 f"pip install -e \".[memorybank]\". For offline runs, use a "
                 f"cached model or pass a local model directory. Original error: {e}"
             ) from e
-        actual_dim = int(model.get_sentence_embedding_dimension())
+        if hasattr(model, "get_embedding_dimension"):
+            actual_dim = int(model.get_embedding_dimension())
+        else:
+            actual_dim = int(model.get_sentence_embedding_dimension())
         args.actual_embedding_dim = actual_dim
         return MemoryBank(
             embedding_dim=actual_dim,
@@ -290,44 +302,57 @@ def _embedding_dim(args: argparse.Namespace) -> int:
 
 
 def _ingest_users(memory_bank: MemoryBank, users: list) -> None:
-    """Ingest reproduction dataset users into MemoryBank.
+    """Compatibility wrapper for callers that still pass one shared bank."""
+    for user in users:
+        _ingest_user(memory_bank, user)
+
+
+def _ingest_user(memory_bank: MemoryBank, user: Any) -> None:
+    """Ingest one reproduction dataset user into one isolated MemoryBank.
 
     Preserves the original ``memory_id`` values from the dataset so that
     gold labels (probing_questions.jsonl) can match retrieved memories.
     """
     from statebudgetmem.core.online import MemoryPiece, MemoryType as MT
 
-    for user in users:
-        for day in user.days:
-            for turn in day.get("dialogues", []):
-                content = f"{turn.get('role', 'User')}: {turn.get('content', '')}"
-                ts_str = str(turn.get("timestamp", ""))
-                ts = memory_bank._parse_time(ts_str)
-                memory = MemoryPiece(
-                    content=content,
-                    timestamp=ts,
-                    memory_type=MT.DIALOG,
-                    last_accessed=ts,
-                    memory_id=str(turn.get("memory_id", "")),
-                    tags=memory_bank._auto_tag(content),
-                )
-                memory_bank._insert_memory(memory)
-            if day.get("daily_event_summary"):
-                memory_bank.store_summary(
-                    str(day["daily_event_summary"]),
-                    str(day.get("date", "")),
-                )
-        if getattr(user, "global_summary", ""):
-            memory_bank.update_global_summary(str(user.global_summary))
-        if getattr(user, "user_portrait", ""):
-            memory_bank.update_user_portrait(str(user.user_portrait))
+    global_ids = getattr(user, "global_memory_ids", {}) or {}
+    memory_bank.global_summary_id = str(
+        global_ids.get("event_summary_id", f"{user.user_id}_global_event_summary")
+    )
+    memory_bank.user_portrait_id = str(
+        global_ids.get("portrait_id", f"{user.user_id}_global_user_portrait")
+    )
+
+    for day in user.days:
+        for turn in day.get("dialogues", []):
+            content = f"{turn.get('role', 'User')}: {turn.get('content', '')}"
+            ts_str = str(turn.get("timestamp", ""))
+            ts = memory_bank._parse_time(ts_str)
+            memory = MemoryPiece(
+                content=content,
+                timestamp=ts,
+                memory_type=MT.DIALOG,
+                last_accessed=ts,
+                memory_id=str(turn.get("memory_id", "")),
+                tags=memory_bank._auto_tag(content),
+            )
+            memory_bank._insert_memory(memory)
+        if day.get("daily_event_summary"):
+            memory_bank.store_summary(
+                str(day["daily_event_summary"]),
+                str(day.get("date", "")),
+            )
+    if getattr(user, "global_summary", ""):
+        memory_bank.update_global_summary(str(user.global_summary))
+    if getattr(user, "user_portrait", ""):
+        memory_bank.update_user_portrait(str(user.user_portrait))
 
 
 # ── Probing ──────────────────────────────────────────────────────────────
 
 
 def _run_probes(
-    memory_bank: MemoryBank,
+    banks_by_user_id: dict[str, MemoryBank] | MemoryBank,
     probes: list[dict],
     args: argparse.Namespace,
     run_id: str,
@@ -336,33 +361,80 @@ def _run_probes(
     rows: list[dict] = []
     embedding_backend, embedding_model = _embedding_metadata(args)
     embedding_dim = _embedding_dim(args)
+    banks = _normalize_banks_by_user_id(banks_by_user_id, probes)
     for probe in probes:
-        started = time.perf_counter()
-        prompt_ctx = memory_bank.build_augmented_prompt(
-            query=probe["question"],
-            current_time=args.current_time,
-            top_k=args.top_k,
-            exclude_forgotten=args.exclude_forgotten,
+        user_id = str(probe.get("user_id", ""))
+        if user_id not in banks:
+            raise KeyError(f"Probe '{probe.get('query_id')}' references unknown user '{user_id}'")
+        memory_bank = banks[user_id]
+        query_time, query_time_source, query_time_value = _resolve_query_time(
+            memory_bank,
+            probe,
+            args,
         )
+        future_memory_ids_excluded = _future_memory_ids_after(
+            memory_bank,
+            query_time_value,
+        )
+        started = time.perf_counter()
+        prompt_kwargs = {
+            "query": probe["question"],
+            "current_time": query_time_value,
+            "top_k": args.top_k,
+            "exclude_forgotten": args.exclude_forgotten,
+            "filters": {"max_timestamp": query_time_value},
+        }
+        prompt_ctx = memory_bank.build_augmented_prompt(**prompt_kwargs)
         latency_ms = (time.perf_counter() - started) * 1000.0
 
         retrieved = prompt_ctx["retrieved_memories"]
         retrieved_ids = [str(r.get("memory_id", "")) for r in retrieved]
+        provided_context_ids = [
+            str(mid) for mid in prompt_ctx.get("provided_context_ids", [])
+        ]
+        original_gold_ids = [str(mid) for mid in probe.get("gold_memory_ids", [])]
+        visible_retrieval_ids = set(_retrievable_memory_ids(memory_bank))
+        visible_retrieval_ids.difference_update(future_memory_ids_excluded)
+        gold_split = _split_gold_ids(
+            memory_bank,
+            original_gold_ids,
+            visible_retrieval_ids=visible_retrieval_ids,
+        )
+        split_metrics = _split_gold_metrics(
+            retrieved_ids=retrieved_ids,
+            provided_context_ids=provided_context_ids,
+            gold_retrieval_ids=gold_split["gold_retrieval_ids"],
+            gold_context_ids=gold_split["gold_context_ids"],
+        )
         template = _template_answer(probe["question"], retrieved)
         stats = memory_bank.get_stats()
-        index_size = int(stats.get("index_size", 0) or 0)
+        user_index_size = int(stats.get("index_size", 0) or 0)
+        user_memory_count = int(stats.get("total_memories", 0) or 0)
 
         row = {
             "run_id": run_id,
             "dataset_source": dataset_source,
-            "user_id": probe.get("user_id", ""),
+            "user_id": user_id,
             "query_id": probe["query_id"],
             "question": probe["question"],
             "query": probe["question"],
             "question_type": probe.get("question_type", ""),
+            "query_timestamp": query_time,
+            "query_time_source": query_time_source,
             "reference_answer": probe.get("reference_answer", ""),
+            "original_gold_memory_ids": original_gold_ids,
+            "gold_retrieval_ids": gold_split["gold_retrieval_ids"],
+            "gold_context_ids": gold_split["gold_context_ids"],
+            "unknown_gold_ids": gold_split["unknown_gold_ids"],
+            "has_retrieval_gold": bool(gold_split["gold_retrieval_ids"]),
+            "has_context_gold": bool(gold_split["gold_context_ids"]),
+            "has_any_gold": bool(
+                gold_split["gold_retrieval_ids"]
+                or gold_split["gold_context_ids"]
+            ),
             "retrieved_memory_ids": retrieved_ids,
-            "gold_memory_ids": probe.get("gold_memory_ids", []),
+            "provided_context_ids": provided_context_ids,
+            "gold_memory_ids": original_gold_ids,
             "expected_keywords": probe.get("expected_keywords", []),
             "retrieved_memories": retrieved,
             "template_answer": template,
@@ -409,7 +481,12 @@ def _run_probes(
             "embedding_backend": embedding_backend,
             "embedding_model": embedding_model,
             "embedding_dim": embedding_dim,
-            "index_size": index_size,
+            "index_size": user_index_size,
+            "user_memory_count": user_memory_count,
+            "user_index_size": user_index_size,
+            "bank_isolation_enabled": True,
+            "future_memory_ids_excluded": future_memory_ids_excluded,
+            "future_memory_count_excluded": len(future_memory_ids_excluded),
             "retention_time_unit_hours": prompt_ctx.get(
                 "retention_time_unit_hours",
                 args.retention_time_unit_hours,
@@ -428,9 +505,155 @@ def _run_probes(
                 probe.get("expected_keywords", [])
             ),
         )
-        row["paper_metrics"] = evaluate_reproduction_row(row, spec)
+        row_metrics = evaluate_reproduction_row(row, spec)
+        row_metrics.update(split_metrics)
+        row["paper_metrics"] = row_metrics
         rows.append(row)
     return rows
+
+
+def _normalize_banks_by_user_id(
+    banks_by_user_id: dict[str, MemoryBank] | MemoryBank,
+    probes: list[dict],
+) -> dict[str, MemoryBank]:
+    if isinstance(banks_by_user_id, dict):
+        return banks_by_user_id
+    user_ids = {str(probe.get("user_id", "")) for probe in probes}
+    if not user_ids:
+        user_ids = {""}
+    return {user_id: banks_by_user_id for user_id in user_ids}
+
+
+def _resolve_query_time(
+    memory_bank: MemoryBank,
+    probe: dict,
+    args: argparse.Namespace,
+) -> tuple[str, str, float]:
+    cli_current_time = getattr(args, "current_time", None)
+    parse_time = getattr(memory_bank, "_parse_time", MemoryBank._parse_time)
+    if cli_current_time:
+        value = parse_time(cli_current_time)
+        return str(cli_current_time), "cli_override", value
+
+    probe_time = str(probe.get("query_timestamp", "") or "").strip()
+    if probe_time:
+        value = parse_time(probe_time)
+        return probe_time, "probe", value
+
+    timestamps = [
+        float(getattr(memory, "timestamp", 0.0) or 0.0)
+        for memory in _bank_memories(memory_bank)
+    ]
+    value = (max(timestamps) if timestamps else time.time()) + 24 * 3600
+    return _format_timestamp(value), "derived_after_last_memory", value
+
+
+def _format_timestamp(timestamp: float) -> str:
+    return datetime.fromtimestamp(timestamp).strftime("%Y-%m-%d %H:%M:%S")
+
+
+def _bank_memories(memory_bank: MemoryBank) -> list[Any]:
+    if hasattr(memory_bank, "get_all"):
+        return list(memory_bank.get_all())
+    return list(getattr(memory_bank, "memories", []))
+
+
+def _retrievable_memory_ids(memory_bank: MemoryBank) -> list[str]:
+    if hasattr(memory_bank, "memories_by_id"):
+        return [str(mid) for mid in getattr(memory_bank, "memories_by_id", {}).keys()]
+    return [
+        str(getattr(memory, "memory_id", ""))
+        for memory in _bank_memories(memory_bank)
+        if getattr(memory, "memory_id", "")
+    ]
+
+
+def _future_memory_ids_after(memory_bank: MemoryBank, query_timestamp: float) -> list[str]:
+    return [
+        str(getattr(memory, "memory_id", ""))
+        for memory in _bank_memories(memory_bank)
+        if getattr(memory, "memory_id", "")
+        and float(getattr(memory, "timestamp", 0.0) or 0.0) > query_timestamp
+    ]
+
+
+def _context_id_set(memory_bank: MemoryBank) -> set[str]:
+    return {
+        str(mid)
+        for mid in (
+            getattr(memory_bank, "global_summary_id", ""),
+            getattr(memory_bank, "user_portrait_id", ""),
+        )
+        if mid
+    }
+
+
+def _split_gold_ids(
+    memory_bank: MemoryBank,
+    gold_ids: list[str],
+    visible_retrieval_ids: set[str] | None = None,
+) -> dict[str, list[str]]:
+    retrieval_ids = (
+        set(_retrievable_memory_ids(memory_bank))
+        if visible_retrieval_ids is None
+        else set(visible_retrieval_ids)
+    )
+    context_ids = _context_id_set(memory_bank)
+    split = {
+        "gold_retrieval_ids": [],
+        "gold_context_ids": [],
+        "unknown_gold_ids": [],
+    }
+    for gold_id in gold_ids:
+        if gold_id in retrieval_ids:
+            split["gold_retrieval_ids"].append(gold_id)
+        elif gold_id in context_ids:
+            split["gold_context_ids"].append(gold_id)
+        else:
+            split["unknown_gold_ids"].append(gold_id)
+    return split
+
+
+def _split_gold_metrics(
+    retrieved_ids: list[str],
+    provided_context_ids: list[str],
+    gold_retrieval_ids: list[str],
+    gold_context_ids: list[str],
+) -> dict[str, float]:
+    retrieval_hits = len(set(retrieved_ids) & set(gold_retrieval_ids))
+    retrieval_precision = (
+        retrieval_hits / len(retrieved_ids) if retrieved_ids else 0.0
+    )
+    retrieval_recall = (
+        retrieval_hits / len(gold_retrieval_ids) if gold_retrieval_ids else 0.0
+    )
+    retrieval_f1 = (
+        2.0 * retrieval_precision * retrieval_recall
+        / (retrieval_precision + retrieval_recall)
+        if retrieval_precision + retrieval_recall
+        else 0.0
+    )
+    context_hits = len(set(provided_context_ids) & set(gold_context_ids))
+    context_coverage = (
+        context_hits / len(gold_context_ids) if gold_context_ids else 0.0
+    )
+    overall_gold = set(gold_retrieval_ids) | set(gold_context_ids)
+    overall_provided = set(retrieved_ids) | set(provided_context_ids)
+    overall_context_coverage = (
+        len(overall_provided & overall_gold) / len(overall_gold)
+        if overall_gold
+        else 0.0
+    )
+    return {
+        "has_retrieval_gold": bool(gold_retrieval_ids),
+        "has_context_gold": bool(gold_context_ids),
+        "has_any_gold": bool(gold_retrieval_ids or gold_context_ids),
+        "retrieval_gold_precision": retrieval_precision,
+        "retrieval_gold_recall": retrieval_recall,
+        "retrieval_gold_f1": retrieval_f1,
+        "context_coverage": context_coverage,
+        "overall_context_coverage": overall_context_coverage,
+    }
 
 
 def _template_answer(query: str, memories: list[dict]) -> str:
@@ -469,6 +692,23 @@ def _build_summary(
     by_question_type = {
         qt: summarize_metric_rows(group) for qt, group in by_type.items()
     }
+    user_ids = sorted({str(r.get("user_id", "")) for r in rows if r.get("user_id")})
+    per_user_memory_counts = {
+        user_id: max(
+            int(r.get("user_memory_count", 0) or 0)
+            for r in rows
+            if r.get("user_id") == user_id
+        )
+        for user_id in user_ids
+    }
+    per_user_index_sizes = {
+        user_id: max(
+            int(r.get("user_index_size", 0) or 0)
+            for r in rows
+            if r.get("user_id") == user_id
+        )
+        for user_id in user_ids
+    }
 
     return {
         "run_id": run_id,
@@ -487,6 +727,19 @@ def _build_summary(
         "exclude_forgotten": args.exclude_forgotten,
         "top_k": args.top_k,
         "probe_count": len(rows),
+        "user_count": len(user_ids),
+        "per_user_memory_counts": per_user_memory_counts,
+        "per_user_index_sizes": per_user_index_sizes,
+        "total_index_size": sum(per_user_index_sizes.values()),
+        "bank_isolation_enabled": all(
+            bool(r.get("bank_isolation_enabled")) for r in rows
+        ),
+        "legacy_gold_metrics_note": (
+            "gold_precision/gold_recall/gold_f1 compare original gold IDs "
+            "against retrieved IDs only. Use retrieval_gold_* and "
+            "context_coverage/overall_context_coverage as primary Phase 1 "
+            "metrics."
+        ),
         "total_forgotten_candidates": sum(forgotten_counts),
         "total_excluded_forgotten": sum(excluded_counts),
         "mean_forgotten_candidates_per_query": (
@@ -514,10 +767,22 @@ def _build_resources(
     resources_path: Path,
     elapsed_ms: float,
     peak_memory: int,
-    memory_bank: Any,
+    banks_by_user_id: Any,
     dataset_source: str,
 ) -> dict:
-    stats = memory_bank.get_stats()
+    banks = (
+        banks_by_user_id
+        if isinstance(banks_by_user_id, dict)
+        else {"": banks_by_user_id}
+    )
+    per_user_memory_counts = {}
+    per_user_index_sizes = {}
+    storage_size_bytes = 0
+    for user_id, bank in banks.items():
+        stats = bank.get_stats()
+        per_user_memory_counts[str(user_id)] = int(stats.get("total_memories", 0) or 0)
+        per_user_index_sizes[str(user_id)] = int(stats.get("index_size", 0) or 0)
+        storage_size_bytes += _estimate_storage(bank)
     embedding_backend, embedding_model = _embedding_metadata(args)
     return {
         "run_id": run_id,
@@ -536,10 +801,15 @@ def _build_resources(
         "retention_time_unit_hours": args.retention_time_unit_hours,
         "exclude_forgotten": args.exclude_forgotten,
         "top_k": args.top_k,
+        "user_count": len(banks),
+        "per_user_memory_counts": per_user_memory_counts,
+        "per_user_index_sizes": per_user_index_sizes,
+        "total_index_size": sum(per_user_index_sizes.values()),
+        "bank_isolation_enabled": True,
         "elapsed_ms": elapsed_ms,
         "peak_tracemalloc_bytes": peak_memory,
-        "faiss_index_size": int(stats.get("index_size", 0) or 0),
-        "storage_size_bytes": _estimate_storage(memory_bank),
+        "faiss_index_size": sum(per_user_index_sizes.values()),
+        "storage_size_bytes": storage_size_bytes,
         "output_file_bytes": {
             "raw_jsonl": _file_size(raw_path),
             "summary_json": _file_size(summary_path),
@@ -576,9 +846,12 @@ def _write_csv(path: Path, rows: list[dict]) -> None:
         path.write_text("", encoding="utf-8")
         return
     keys = [
-        "query_id", "question", "question_type",
+        "query_id", "user_id", "question", "question_type",
         "memory_retrieval_accuracy", "response_correctness",
-        "contextual_coherence", "gold_precision", "gold_recall", "gold_f1",
+        "contextual_coherence",
+        "retrieval_gold_precision", "retrieval_gold_recall", "retrieval_gold_f1",
+        "context_coverage", "overall_context_coverage",
+        "gold_precision", "gold_recall", "gold_f1",
         "retrieval_latency_ms",
     ]
     lines = [",".join(keys)]

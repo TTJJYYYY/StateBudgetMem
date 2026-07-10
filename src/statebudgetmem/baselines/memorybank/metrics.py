@@ -142,6 +142,14 @@ def summarize_metric_rows(rows: Iterable[dict[str, Any]]) -> dict[str, float]:
             "gold_precision": 0.0,
             "gold_recall": 0.0,
             "gold_f1": 0.0,
+            "retrieval_gold_precision": 0.0,
+            "retrieval_gold_recall": 0.0,
+            "retrieval_gold_f1": 0.0,
+            "context_coverage": 0.0,
+            "overall_context_coverage": 0.0,
+            "retrieval_gold_applicable_count": 0.0,
+            "context_gold_applicable_count": 0.0,
+            "overall_gold_applicable_count": 0.0,
             "mean_retrieval_latency_ms": 0.0,
             "mean_faiss_index_size": 0.0,
             "mean_prompt_token_cost": 0.0,
@@ -157,6 +165,40 @@ def summarize_metric_rows(rows: Iterable[dict[str, Any]]) -> dict[str, float]:
         "gold_precision": _mean(selected, "gold_precision"),
         "gold_recall": _mean(selected, "gold_recall"),
         "gold_f1": _mean(selected, "gold_f1"),
+        "retrieval_gold_precision": _mean_applicable(
+            selected,
+            "retrieval_gold_precision",
+            "has_retrieval_gold",
+        ),
+        "retrieval_gold_recall": _mean_applicable(
+            selected,
+            "retrieval_gold_recall",
+            "has_retrieval_gold",
+        ),
+        "retrieval_gold_f1": _mean_applicable(
+            selected,
+            "retrieval_gold_f1",
+            "has_retrieval_gold",
+        ),
+        "context_coverage": _mean_applicable(
+            selected,
+            "context_coverage",
+            "has_context_gold",
+        ),
+        "overall_context_coverage": _mean_applicable(
+            selected,
+            "overall_context_coverage",
+            "has_any_gold",
+        ),
+        "retrieval_gold_applicable_count": float(
+            _applicable_count(selected, "has_retrieval_gold")
+        ),
+        "context_gold_applicable_count": float(
+            _applicable_count(selected, "has_context_gold")
+        ),
+        "overall_gold_applicable_count": float(
+            _applicable_count(selected, "has_any_gold")
+        ),
         "mean_retrieval_latency_ms": _mean(selected, "retrieval_latency_ms"),
         "mean_faiss_index_size": _mean(selected, "faiss_index_size"),
         "mean_prompt_token_cost": _mean(selected, "prompt_token_cost"),
@@ -217,6 +259,21 @@ def _tokens(text: str) -> set[str]:
 
 def _mean(rows: list[dict[str, Any]], key: str) -> float:
     return sum(float(row.get(key, 0.0) or 0.0) for row in rows) / len(rows)
+
+
+def _applicable_count(rows: list[dict[str, Any]], flag_key: str) -> int:
+    return sum(1 for row in rows if bool(row.get(flag_key)))
+
+
+def _mean_applicable(
+    rows: list[dict[str, Any]],
+    value_key: str,
+    flag_key: str,
+) -> float:
+    applicable = [row for row in rows if bool(row.get(flag_key))]
+    if not applicable:
+        return 0.0
+    return _mean(applicable, value_key)
 
 
 __all__ = [

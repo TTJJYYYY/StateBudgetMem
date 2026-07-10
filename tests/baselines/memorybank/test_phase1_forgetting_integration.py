@@ -5,9 +5,12 @@ import importlib.util
 import json
 import subprocess
 import sys
+from types import SimpleNamespace
 from pathlib import Path
 
 import pytest
+
+from statebudgetmem.baselines.memorybank.datasets import ReproductionUser
 
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -46,7 +49,10 @@ class _FakeMemoryBank:
         raise AssertionError("phase1 runner must not call retrieve directly")
 
     def get_stats(self):
-        return {"index_size": 3}
+        return {"index_size": 3, "total_memories": 3}
+
+    def get_all(self):
+        return []
 
     def build_augmented_prompt(
         self,
@@ -54,10 +60,12 @@ class _FakeMemoryBank:
         current_time: str,
         top_k: int,
         exclude_forgotten: bool = False,
+        filters: dict | None = None,
     ):
         self.build_calls += 1
         return {
             "retrieved_memory_ids": ["m1"],
+            "provided_context_ids": [],
             "retrieved_count": 1,
             "retrieved_memories": [
                 {
@@ -111,6 +119,24 @@ class _FakeMemoryBank:
         }
 
 
+class _TypeErrorMemoryBank(_FakeMemoryBank):
+    def __init__(self) -> None:
+        super().__init__()
+        self.seen_filters = []
+
+    def build_augmented_prompt(
+        self,
+        query: str,
+        current_time: str,
+        top_k: int,
+        exclude_forgotten: bool = False,
+        filters: dict | None = None,
+    ):
+        self.build_calls += 1
+        self.seen_filters.append(filters)
+        raise TypeError("intentional prompt failure")
+
+
 def test_phase1_probe_uses_one_prompt_retrieval_path() -> None:
     runner = _load_runner()
     fake_bank = _FakeMemoryBank()
@@ -138,8 +164,40 @@ def test_phase1_probe_uses_one_prompt_retrieval_path() -> None:
     assert rows[0]["run_id"] == "phase1_test"
     assert rows[0]["dataset_source"] == "built_in_smoke_sample"
     assert rows[0]["retrieved_memory_ids"] == ["m1"]
+    assert rows[0]["bank_isolation_enabled"] is True
+    assert rows[0]["user_memory_count"] == 3
+    assert rows[0]["user_index_size"] == 3
     assert rows[0]["retrieved_memories"][0]["content"] in rows[0]["prompt_template"]
     assert rows[0]["template_answer"].endswith(rows[0]["retrieved_memories"][0]["content"])
+
+
+def test_phase1_prompt_typeerror_is_not_retried_without_future_filter() -> None:
+    runner = _load_runner()
+    fake_bank = _TypeErrorMemoryBank()
+    probes = [
+        {
+            "query_id": "q_typeerror",
+            "user_id": "u1",
+            "question": "What should fail?",
+            "gold_memory_ids": [],
+            "expected_keywords": [],
+            "question_type": "memory_recall",
+        }
+    ]
+
+    with pytest.raises(TypeError, match="intentional prompt failure"):
+        runner._run_probes(
+            {"u1": fake_bank},
+            probes,
+            _args(current_time="2026-06-24 10:00"),
+            run_id="phase1_typeerror",
+            dataset_source="unit",
+        )
+
+    assert fake_bank.build_calls == 1
+    assert fake_bank.seen_filters == [
+        {"max_timestamp": runner.MemoryBank._parse_time("2026-06-24 10:00")}
+    ]
 
 
 def test_three_tools_share_deterministic_hash_embedding() -> None:
@@ -227,7 +285,10 @@ def test_sentence_transformer_uses_model_dimension(monkeypatch) -> None:
             self.model_name = model_name
 
         def get_sentence_embedding_dimension(self):
-            return 768
+            raise AssertionError("new sentence-transformers path should not be used")
+
+        def get_embedding_dimension(self):
+            return 512
 
     monkeypatch.setitem(
         sys.modules,
@@ -246,9 +307,9 @@ def test_sentence_transformer_uses_model_dimension(monkeypatch) -> None:
     )
     bank = runner._build_memory_bank(args)
 
-    assert bank.embedding_dim == 768
-    assert args.actual_embedding_dim == 768
-    assert runner._embedding_dim(args) == 768
+    assert bank.embedding_dim == 512
+    assert args.actual_embedding_dim == 512
+    assert runner._embedding_dim(args) == 512
 
 
 def test_phase1_raw_row_keeps_forgetting_fields() -> None:
@@ -271,6 +332,11 @@ def test_phase1_raw_row_keeps_forgetting_fields() -> None:
     assert row["question"] == "question"
     assert row["query"] == "question"
     assert row["index_size"] == 3
+    assert row["user_memory_count"] == 3
+    assert row["user_index_size"] == 3
+    assert row["bank_isolation_enabled"] is True
+    assert row["future_memory_count_excluded"] == 0
+    assert row["query_time_source"] == "cli_override"
     assert row["embedding_dim"] == 32
     assert row["retention_time_unit_hours"] == 24.0
     assert row["forgotten_memory_ids"] == ["old"]
@@ -322,6 +388,10 @@ def test_phase1_smoke_exclude_forgetting_fields(tmp_path) -> None:
     assert all(row["paper_metrics"]["faiss_index_size"] == row["index_size"] for row in rows)
     assert all(row["embedding_dim"] == 32 for row in rows)
     assert all(row["retention_time_unit_hours"] == 24.0 for row in rows)
+    assert all(row["bank_isolation_enabled"] is True for row in rows)
+    assert all("gold_retrieval_ids" in row for row in rows)
+    assert all("gold_context_ids" in row for row in rows)
+    assert all("provided_context_ids" in row for row in rows)
     assert all(row["dataset_source"] == "built_in_smoke_sample" for row in rows)
     assert all("forgotten_memory_ids" in row for row in rows)
     assert all("excluded_forgotten_memory_ids" in row for row in rows)
@@ -330,7 +400,11 @@ def test_phase1_smoke_exclude_forgetting_fields(tmp_path) -> None:
     assert summary["embedding_model"] == "deterministic_hash_embedding"
     assert summary["embedding_dim"] == 32
     assert summary["retention_time_unit_hours"] == 24.0
+    assert summary["user_count"] == 1
+    assert summary["bank_isolation_enabled"] is True
     assert summary["paper_metrics"]["mean_faiss_index_size"] > 0
+    assert "retrieval_gold_recall" in summary["paper_metrics"]
+    assert "context_coverage" in summary["paper_metrics"]
     assert "total_excluded_forgotten" in summary
     assert resources["exclude_forgotten"] is True
     assert resources["dataset_source"] == "built_in_smoke_sample"
@@ -338,5 +412,182 @@ def test_phase1_smoke_exclude_forgetting_fields(tmp_path) -> None:
     assert resources["embedding_model"] == "deterministic_hash_embedding"
     assert resources["embedding_dim"] == 32
     assert resources["retention_time_unit_hours"] == 24.0
+    assert resources["user_count"] == 1
+    assert resources["bank_isolation_enabled"] is True
     assert resources["cloud_api_used"] is False
     assert resources["llm_called"] is False
+
+
+def test_phase1_isolates_banks_by_user_and_reinforcement() -> None:
+    runner = _load_runner()
+    args = _args(current_time=None, top_k=3, exclude_forgotten=False)
+    users = [
+        ReproductionUser(
+            user_id="user_001",
+            days=[
+                {
+                    "date": "2026-06-01",
+                    "dialogues": [
+                        {
+                            "role": "user",
+                            "content": "I keep a sapphire notebook for exams.",
+                            "timestamp": "2026-06-01 09:00",
+                            "memory_id": "user_001_dialog_sapphire",
+                        }
+                    ],
+                }
+            ],
+            global_summary="User 001 studies with a sapphire notebook.",
+            user_portrait="User 001 likes quiet study plans.",
+            global_memory_ids={
+                "event_summary_id": "user_001_global_event_summary",
+                "portrait_id": "user_001_global_user_portrait",
+            },
+        ),
+        ReproductionUser(
+            user_id="user_002",
+            days=[
+                {
+                    "date": "2026-06-01",
+                    "dialogues": [
+                        {
+                            "role": "user",
+                            "content": "I keep an amber notebook for recipes.",
+                            "timestamp": "2026-06-01 09:00",
+                            "memory_id": "user_002_dialog_amber",
+                        }
+                    ],
+                }
+            ],
+            global_summary="User 002 cooks with an amber notebook.",
+            user_portrait="User 002 likes recipe experiments.",
+            global_memory_ids={
+                "event_summary_id": "user_002_global_event_summary",
+                "portrait_id": "user_002_global_user_portrait",
+            },
+        ),
+    ]
+    banks = {}
+    for user in users:
+        bank = runner._build_memory_bank(args)
+        runner._ingest_user(bank, user)
+        banks[user.user_id] = bank
+
+    before_strength = banks["user_002"].get("user_002_dialog_amber").strength
+    before_access_count = banks["user_002"].get("user_002_dialog_amber").access_count
+    rows = runner._run_probes(
+        banks,
+        [
+            {
+                "query_id": "q_user_001",
+                "user_id": "user_001",
+                "question": "Which notebook do I use for exams?",
+                "gold_memory_ids": ["user_001_dialog_sapphire"],
+                "expected_keywords": ["sapphire"],
+                "question_type": "memory_recall",
+            }
+        ],
+        args,
+        run_id="phase1_isolation_test",
+        dataset_source="unit",
+    )
+
+    assert not any(mid.startswith("user_002") for mid in rows[0]["retrieved_memory_ids"])
+    assert banks["user_001"].global_summary_id == "user_001_global_event_summary"
+    assert banks["user_002"].global_summary_id == "user_002_global_event_summary"
+    assert banks["user_001"].user_portrait_id == "user_001_global_user_portrait"
+    assert banks["user_002"].user_portrait_id == "user_002_global_user_portrait"
+    assert banks["user_002"].get("user_002_dialog_amber").strength == before_strength
+    assert banks["user_002"].get("user_002_dialog_amber").access_count == before_access_count
+
+
+def test_phase1_query_timestamp_excludes_future_memory() -> None:
+    runner = _load_runner()
+    args = _args(current_time=None, top_k=5, exclude_forgotten=False)
+    user = ReproductionUser(
+        user_id="user_future",
+        days=[
+            {
+                "date": "2026-06-01",
+                "dialogues": [
+                    {
+                        "role": "user",
+                        "content": "Past memory says I owned a blue mug.",
+                        "timestamp": "2026-06-01 09:00",
+                        "memory_id": "past_mug",
+                    },
+                    {
+                        "role": "user",
+                        "content": "Future memory says I bought a red telescope.",
+                        "timestamp": "2026-06-03 09:00",
+                        "memory_id": "future_telescope",
+                    },
+                ],
+            }
+        ],
+    )
+    bank = runner._build_memory_bank(args)
+    runner._ingest_user(bank, user)
+
+    rows = runner._run_probes(
+        {"user_future": bank},
+        [
+            {
+                "query_id": "q_future",
+                "user_id": "user_future",
+                "question": "What telescope did I buy?",
+                "query_timestamp": "2026-06-02 09:00",
+                "gold_memory_ids": ["future_telescope"],
+                "expected_keywords": ["telescope"],
+                "question_type": "memory_recall",
+            }
+        ],
+        args,
+        run_id="phase1_future_test",
+        dataset_source="unit",
+    )
+
+    row = rows[0]
+    assert row["query_time_source"] == "probe"
+    assert row["query_timestamp"] == "2026-06-02 09:00"
+    assert row["future_memory_ids_excluded"] == ["future_telescope"]
+    assert row["future_memory_count_excluded"] == 1
+    assert "future_telescope" not in row["retrieved_memory_ids"]
+    assert row["unknown_gold_ids"] == ["future_telescope"]
+
+
+def test_phase1_splits_retrieval_context_and_unknown_gold_ids() -> None:
+    runner = _load_runner()
+    bank = SimpleNamespace(
+        memories_by_id={"dialog_gold": object()},
+        global_summary_id="summary_gold",
+        user_portrait_id="portrait_gold",
+    )
+
+    split = runner._split_gold_ids(
+        bank,
+        ["dialog_gold", "portrait_gold", "summary_gold", "missing_gold"],
+        visible_retrieval_ids={"dialog_gold"},
+    )
+    metrics = runner._split_gold_metrics(
+        retrieved_ids=["dialog_gold"],
+        provided_context_ids=["portrait_gold", "summary_gold"],
+        gold_retrieval_ids=split["gold_retrieval_ids"],
+        gold_context_ids=split["gold_context_ids"],
+    )
+    negative_metrics = runner._split_gold_metrics(
+        retrieved_ids=["irrelevant"],
+        provided_context_ids=[],
+        gold_retrieval_ids=[],
+        gold_context_ids=[],
+    )
+
+    assert split["gold_retrieval_ids"] == ["dialog_gold"]
+    assert split["gold_context_ids"] == ["portrait_gold", "summary_gold"]
+    assert split["unknown_gold_ids"] == ["missing_gold"]
+    assert metrics["retrieval_gold_recall"] == 1.0
+    assert metrics["context_coverage"] == 1.0
+    assert metrics["overall_context_coverage"] == 1.0
+    assert negative_metrics["retrieval_gold_recall"] == 0.0
+    assert negative_metrics["context_coverage"] == 0.0
+    assert negative_metrics["overall_context_coverage"] == 0.0

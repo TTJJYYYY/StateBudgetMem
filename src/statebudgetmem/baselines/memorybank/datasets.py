@@ -279,6 +279,7 @@ class ReproductionUser:
     days: list[dict] = field(default_factory=list)
     global_summary: str = ""
     user_portrait: str = ""
+    global_memory_ids: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass
@@ -292,6 +293,7 @@ class ReproductionProbe:
     gold_memory_ids: list[str] = field(default_factory=list)
     expected_keywords: list[str] = field(default_factory=list)
     question_type: str = "memory_recall"
+    query_timestamp: str = ""
 
 
 def load_reproduction_dataset(
@@ -341,6 +343,7 @@ def load_reproduction_dataset(
                     str(kw) for kw in data.get("expected_keywords", [])
                 ],
                 question_type=str(data.get("question_type", "memory_recall")),
+                query_timestamp=str(data.get("query_timestamp", "")),
             )
             if probe.user_id not in user_ids:
                 raise ValueError(
@@ -366,6 +369,10 @@ def load_user_file(path: str | Path) -> ReproductionUser:
         days=data.get("days", []),
         global_summary=str(data.get("global_event_summary", "")),
         user_portrait=str(data.get("global_user_portrait", "")),
+        global_memory_ids={
+            str(key): str(value)
+            for key, value in data.get("global_memory_ids", {}).items()
+        },
     )
     if not user.user_id:
         raise ValueError(f"User file {path} missing 'user_id' field")
