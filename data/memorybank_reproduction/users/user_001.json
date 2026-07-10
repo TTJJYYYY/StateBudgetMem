@@ -329,6 +329,10 @@
 
 
     "global_user_portrait":
-    "Lin is a motivated technology-oriented student who enjoys programming and continuous learning. He is adaptable and willing to adjust his goals based on new experiences."
+    "Lin is a motivated technology-oriented student who enjoys programming and continuous learning. He is adaptable and willing to adjust his goals based on new experiences.",
 
+    "global_memory_ids": {
+    "event_summary_id": "user_001_global_event_summary",
+    "portrait_id": "user_001_global_user_portrait"
+}
 }

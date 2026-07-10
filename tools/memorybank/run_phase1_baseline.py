@@ -290,15 +290,28 @@ def _embedding_dim(args: argparse.Namespace) -> int:
 
 
 def _ingest_users(memory_bank: MemoryBank, users: list) -> None:
-    """Ingest reproduction dataset users into MemoryBank."""
+    """Ingest reproduction dataset users into MemoryBank.
+
+    Preserves the original ``memory_id`` values from the dataset so that
+    gold labels (probing_questions.jsonl) can match retrieved memories.
+    """
+    from statebudgetmem.core.online import MemoryPiece, MemoryType as MT
+
     for user in users:
         for day in user.days:
             for turn in day.get("dialogues", []):
-                memory_bank.store_dialog(
-                    str(turn.get("role", "User")),
-                    str(turn.get("content", "")),
-                    str(turn.get("timestamp", "")),
+                content = f"{turn.get('role', 'User')}: {turn.get('content', '')}"
+                ts_str = str(turn.get("timestamp", ""))
+                ts = memory_bank._parse_time(ts_str)
+                memory = MemoryPiece(
+                    content=content,
+                    timestamp=ts,
+                    memory_type=MT.DIALOG,
+                    last_accessed=ts,
+                    memory_id=str(turn.get("memory_id", "")),
+                    tags=memory_bank._auto_tag(content),
                 )
+                memory_bank._insert_memory(memory)
             if day.get("daily_event_summary"):
                 memory_bank.store_summary(
                     str(day["daily_event_summary"]),

@@ -330,5 +330,10 @@
 
 
     "global_user_portrait":
-    "Lily is a creative and open-minded person who enjoys photography, artistic expression, and exploring new experiences."
+    "Lily is a creative and open-minded person who enjoys photography, artistic expression, and exploring new experiences.",
+
+    "global_memory_ids": {
+    "event_summary_id": "user_004_global_event_summary",
+    "portrait_id": "user_004_global_user_portrait"
+    }
 }

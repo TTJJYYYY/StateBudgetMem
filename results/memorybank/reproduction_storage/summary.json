@@ -1,0 +1,277 @@
+[
+  {
+    "user_id": "user_001",
+    "summary_mode": "fixture",
+    "portrait_mode": "fixture",
+    "user_memory_ids": {
+      "event_summary_id": "user_001_global_event_summary",
+      "portrait_id": "user_001_global_user_portrait"
+    },
+    "days": [
+      {
+        "date": "2026-06-20",
+        "daily_event_summary": "Lin started learning Python for data analysis and considered preparing for graduate school.",
+        "daily_personality": "Lin shows strong motivation for self-improvement and enjoys learning new skills.",
+        "source": "manual_fixture"
+      },
+      {
+        "date": "2026-06-21",
+        "daily_event_summary": "Lin practiced Python programming and started maintaining a regular running habit.",
+        "daily_personality": "Lin is disciplined and tries to balance learning with personal health.",
+        "source": "manual_fixture"
+      },
+      {
+        "date": "2026-06-22",
+        "daily_event_summary": "Lin practiced data analysis with pandas and discussed stress related to graduate school preparation.",
+        "daily_personality": "Lin is ambitious but sometimes feels pressure when pursuing goals.",
+        "source": "manual_fixture"
+      },
+      {
+        "date": "2026-06-23",
+        "daily_event_summary": "Lin joined a programming project and began reconsidering the balance between exams and practical development.",
+        "daily_personality": "Lin is reflective and willing to adjust plans according to personal interests.",
+        "source": "manual_fixture"
+      },
+      {
+        "date": "2026-06-24",
+        "daily_event_summary": "Lin changed career plans from graduate school preparation to seeking software internships.",
+        "daily_personality": "Lin is adaptable and makes decisions based on personal experience.",
+        "source": "manual_fixture"
+      },
+      {
+        "date": "2026-06-25",
+        "daily_event_summary": "Lin studied machine learning and continued maintaining a healthy exercise routine.",
+        "daily_personality": "Lin is persistent and interested in exploring advanced technologies.",
+        "source": "manual_fixture"
+      },
+      {
+        "date": "2026-06-26",
+        "daily_event_summary": "Lin completed a data analysis project and set a career goal of becoming an AI software engineer.",
+        "daily_personality": "Lin is goal-oriented and actively plans for future development.",
+        "source": "manual_fixture"
+      }
+    ],
+    "global_event_summary": "Lin started with a plan to prepare for graduate school, but gradually shifted toward software engineering and AI development. During this period, he learned Python, machine learning, and completed data analysis projects.",
+    "global_user_portrait": "Lin is a motivated technology-oriented student who enjoys programming and continuous learning. He is adaptable and willing to adjust his goals based on new experiences."
+  },
+  {
+    "user_id": "user_002",
+    "summary_mode": "fixture",
+    "portrait_mode": "fixture",
+    "user_memory_ids": {
+      "event_summary_id": "user_002_global_event_summary",
+      "portrait_id": "user_002_global_user_portrait"
+    },
+    "days": [
+      {
+        "date": "2026-06-20",
+        "daily_event_summary": "Amy talked about work stress and her habit of drinking milk tea and eating desserts.",
+        "daily_personality": "Amy enjoys relaxing through food and is aware of her lifestyle habits.",
+        "source": "manual_fixture"
+      },
+      {
+        "date": "2026-06-21",
+        "daily_event_summary": "Amy decided to improve her lifestyle by starting regular exercise and adjusting her habits.",
+        "daily_personality": "Amy is willing to make changes and improve herself.",
+        "source": "manual_fixture"
+      },
+      {
+        "date": "2026-06-22",
+        "daily_event_summary": "Amy started running and reduced sugary drinks as part of her health improvement plan.",
+        "daily_personality": "Amy shows increasing discipline and commitment to personal goals.",
+        "source": "manual_fixture"
+      },
+      {
+        "date": "2026-06-23",
+        "daily_event_summary": "Amy created a running schedule and started paying attention to sugar intake.",
+        "daily_personality": "Amy is becoming more organized and responsible for her health.",
+        "source": "manual_fixture"
+      },
+      {
+        "date": "2026-06-24",
+        "daily_event_summary": "Amy continued exercising and replaced some desserts with healthier food choices.",
+        "daily_personality": "Amy is developing healthier preferences through consistent effort.",
+        "source": "manual_fixture"
+      },
+      {
+        "date": "2026-06-25",
+        "daily_event_summary": "Amy maintained her running routine and started preparing healthier meals.",
+        "daily_personality": "Amy demonstrates persistence and strong self-management skills.",
+        "source": "manual_fixture"
+      },
+      {
+        "date": "2026-06-26",
+        "daily_event_summary": "Amy reflected on her lifestyle change from sugary food habits to regular exercise and healthy eating.",
+        "daily_personality": "Amy is disciplined, health-oriented, and capable of maintaining long-term changes.",
+        "source": "manual_fixture"
+      }
+    ],
+    "global_event_summary": "Amy changed her lifestyle from frequently drinking milk tea and eating desserts to maintaining regular running habits and healthier eating choices.",
+    "global_user_portrait": "Amy is a disciplined and health-conscious person who values self-improvement and maintains long-term healthy habits."
+  },
+  {
+    "user_id": "user_003",
+    "summary_mode": "fixture",
+    "portrait_mode": "fixture",
+    "user_memory_ids": {
+      "event_summary_id": "user_003_global_event_summary",
+      "portrait_id": "user_003_global_user_portrait"
+    },
+    "days": [
+      {
+        "date": "2026-06-20",
+        "daily_event_summary": "Kevin reviewed data structures and started using Python for small projects.",
+        "daily_personality": "Kevin is interested in learning technical skills and improving problem-solving abilities.",
+        "source": "manual_fixture"
+      },
+      {
+        "date": "2026-06-21",
+        "daily_event_summary": "Kevin studied quicksort and organized algorithm learning notes.",
+        "daily_personality": "Kevin prefers structured learning and focuses on understanding details.",
+        "source": "manual_fixture"
+      },
+      {
+        "date": "2026-06-22",
+        "daily_event_summary": "Kevin developed a Flask backend project and became interested in open source development.",
+        "daily_personality": "Kevin enjoys practical projects and learning from real-world experience.",
+        "source": "manual_fixture"
+      },
+      {
+        "date": "2026-06-23",
+        "daily_event_summary": "Kevin added MySQL database support to his Flask project.",
+        "daily_personality": "Kevin pays attention to details and enjoys solving engineering problems.",
+        "source": "manual_fixture"
+      },
+      {
+        "date": "2026-06-24",
+        "daily_event_summary": "Kevin uploaded his project to GitHub and planned to contribute to open source.",
+        "daily_personality": "Kevin is motivated by technical growth and collaboration.",
+        "source": "manual_fixture"
+      },
+      {
+        "date": "2026-06-25",
+        "daily_event_summary": "Kevin reviewed binary search and reflected on combining algorithms with engineering.",
+        "daily_personality": "Kevin enjoys connecting theoretical knowledge with practical applications.",
+        "source": "manual_fixture"
+      },
+      {
+        "date": "2026-06-26",
+        "daily_event_summary": "Kevin completed a Flask project and decided to focus on backend development.",
+        "daily_personality": "Kevin is goal-oriented and enjoys continuous technical improvement.",
+        "source": "manual_fixture"
+      }
+    ],
+    "global_event_summary": "Kevin developed programming skills through algorithm study and a Flask backend project. He explored Python, databases, GitHub, and backend engineering.",
+    "global_user_portrait": "Kevin is a logical and detail-oriented learner who enjoys programming, algorithms, and practical software engineering projects."
+  },
+  {
+    "user_id": "user_004",
+    "summary_mode": "fixture",
+    "portrait_mode": "fixture",
+    "user_memory_ids": {
+      "event_summary_id": "user_004_global_event_summary",
+      "portrait_id": "user_004_global_user_portrait"
+    },
+    "days": [
+      {
+        "date": "2026-06-20",
+        "daily_event_summary": "Lily started taking photos of campus scenery and enjoyed recording daily moments.",
+        "daily_personality": "Lily is creative and enjoys observing details in everyday life.",
+        "source": "manual_fixture"
+      },
+      {
+        "date": "2026-06-21",
+        "daily_event_summary": "Lily learned photography composition and lighting techniques.",
+        "daily_personality": "Lily is patient and interested in improving creative skills.",
+        "source": "manual_fixture"
+      },
+      {
+        "date": "2026-06-22",
+        "daily_event_summary": "Lily planned a photography trip and looked for creative inspiration through travel.",
+        "daily_personality": "Lily is curious and enjoys exploring new experiences.",
+        "source": "manual_fixture"
+      },
+      {
+        "date": "2026-06-23",
+        "daily_event_summary": "Lily explored music interests and considered combining music with photography.",
+        "daily_personality": "Lily has artistic interests and enjoys creative expression.",
+        "source": "manual_fixture"
+      },
+      {
+        "date": "2026-06-24",
+        "daily_event_summary": "Lily visited an art exhibition and explored different forms of artistic expression.",
+        "daily_personality": "Lily appreciates creativity and has strong artistic curiosity.",
+        "source": "manual_fixture"
+      },
+      {
+        "date": "2026-06-25",
+        "daily_event_summary": "Lily organized her photography works and prepared to share them.",
+        "daily_personality": "Lily enjoys sharing creativity and communicating through art.",
+        "source": "manual_fixture"
+      },
+      {
+        "date": "2026-06-26",
+        "daily_event_summary": "Lily reflected on her interests in photography, travel, and music and planned to improve photography skills.",
+        "daily_personality": "Lily is creative, open-minded, and enjoys exploring new experiences.",
+        "source": "manual_fixture"
+      }
+    ],
+    "global_event_summary": "Lily explored photography, travel, music, and art. She gradually developed her creative interests through photography practice and artistic experiences.",
+    "global_user_portrait": "Lily is a creative and open-minded person who enjoys photography, artistic expression, and exploring new experiences."
+  },
+  {
+    "user_id": "user_005",
+    "summary_mode": "fixture",
+    "portrait_mode": "fixture",
+    "user_memory_ids": {
+      "event_summary_id": "user_005_global_event_summary",
+      "portrait_id": "user_005_global_user_portrait"
+    },
+    "days": [
+      {
+        "date": "2026-06-20",
+        "daily_event_summary": "Jack started thinking about career choices and considered preparing for civil service exams.",
+        "daily_personality": "Jack values stability and carefully considers important decisions.",
+        "source": "manual_fixture"
+      },
+      {
+        "date": "2026-06-21",
+        "daily_event_summary": "Jack explored internet company opportunities and became interested in product-related work.",
+        "daily_personality": "Jack is open to exploring different career possibilities.",
+        "source": "manual_fixture"
+      },
+      {
+        "date": "2026-06-22",
+        "daily_event_summary": "Jack attended an online company event and started valuing creativity in his career.",
+        "daily_personality": "Jack reflects on personal values and adapts his goals.",
+        "source": "manual_fixture"
+      },
+      {
+        "date": "2026-06-23",
+        "daily_event_summary": "Jack shifted focus from civil service preparation to exploring product and internet careers.",
+        "daily_personality": "Jack is adaptable and willing to change plans based on new information.",
+        "source": "manual_fixture"
+      },
+      {
+        "date": "2026-06-24",
+        "daily_event_summary": "Jack learned product management skills and started improving his resume.",
+        "daily_personality": "Jack is proactive and focused on career preparation.",
+        "source": "manual_fixture"
+      },
+      {
+        "date": "2026-06-25",
+        "daily_event_summary": "Jack attended a product internship interview and became more interested in product management.",
+        "daily_personality": "Jack enjoys combining different fields and exploring new opportunities.",
+        "source": "manual_fixture"
+      },
+      {
+        "date": "2026-06-26",
+        "daily_event_summary": "Jack decided to pursue product management as his future career direction.",
+        "daily_personality": "Jack is ambitious, adaptable, and willing to explore new paths.",
+        "source": "manual_fixture"
+      }
+    ],
+    "global_event_summary": "Jack explored different career options, moving from considering civil service exams toward internet industry and product management opportunities.",
+    "global_user_portrait": "Jack is an ambitious and adaptable person who carefully considers career development and enjoys combining technology with business."
+  }
+]
