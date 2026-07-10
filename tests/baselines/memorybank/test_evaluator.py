@@ -1,84 +1,116 @@
-from __future__ import annotations
+"""Tests for Phase 1 evaluator (费哲瀚 — C1/C2/C3).
 
-from dataclasses import dataclass
+All tests use built-in smoke data; no external dataset or cloud API required.
+"""
 
-from statebudgetmem.baselines.memorybank import (
-    EvaluationResult,
-    MemoryEvaluator,
-    summarize_results,
+import json
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
+
+import pytest
+
+from statebudgetmem.baselines.memorybank.metrics import (
+    gold_retrieval_f1,
+    gold_retrieval_precision,
+    gold_retrieval_recall,
 )
 
-
-@dataclass
-class FakeMemory:
-    memory_id: str
-    content: str
-    timestamp: float
+ROOT = Path(__file__).resolve().parents[3]
 
 
-class FakeMemoryBank:
-    def __init__(self, forgetting_threshold: float = 0.3) -> None:
-        self.memories: list[FakeMemory] = []
-        self.portrait = ""
+class TestGoldMetrics:
+    def test_precision_all_hits(self):
+        assert gold_retrieval_precision(["m1", "m2", "m3"], ["m1", "m2"]) == 2 / 3
 
-    def add(self, messages, **kwargs):
-        ids = []
-        for index, (_role, content, _timestamp) in enumerate(messages):
-            memory_id = f"m{len(self.memories) + index}"
-            self.memories.append(FakeMemory(memory_id, content, float(len(self.memories))))
-            ids.append(memory_id)
-        return ids
+    def test_precision_no_hits(self):
+        assert gold_retrieval_precision(["m1"], ["m2"]) == 0.0
 
-    def build_augmented_prompt(self, query, current_time=None, top_k=5):
-        context = "\n".join(memory.content for memory in self.memories[-top_k:])
-        return {
-            "prompt_template": f"相关历史记忆:\n{context}\n问题:{query}",
-            "retrieved_count": min(top_k, len(self.memories)),
-        }
+    def test_precision_empty_retrieved(self):
+        assert gold_retrieval_precision([], ["m1"]) == 0.0
 
-    def update_user_portrait(self, portrait):
-        self.portrait = portrait
+    def test_precision_empty_gold(self):
+        assert gold_retrieval_precision(["m1"], []) == 0.0
 
-    def get_stats(self):
-        return {"total_memories": len(self.memories)}
+    def test_recall_all_found(self):
+        assert gold_retrieval_recall(["m1", "m2"], ["m1"]) == 1.0
 
+    def test_recall_partial(self):
+        assert gold_retrieval_recall(["m1"], ["m1", "m2"]) == 0.5
 
-def test_memory_evaluator_runs_with_injected_backend() -> None:
-    def llm(prompt: str) -> str:
-        return "小林" if "相关历史记忆" in prompt else "不知道"
+    def test_recall_empty_gold(self):
+        assert gold_retrieval_recall(["m1"], []) == 1.0
 
-    evaluator = MemoryEvaluator(
-        llm_caller=llm,
-        memory_bank_factory=FakeMemoryBank,
-    )
-    output = evaluator.run_evaluation(
-        history=[("用户", "我叫小林", "2026-01-01")],
-        probe_questions=[
-            {
-                "question": "我叫什么？",
-                "expected_keywords": ["小林"],
-                "category": "fact",
-            }
-        ],
-    )
-    assert output["summary"]["memory_avg"] == 1.0
-    assert output["summary"]["baseline_avg"] == 0.0
+    def test_f1_perfect(self):
+        assert gold_retrieval_f1(1.0, 1.0) == 1.0
+
+    def test_f1_zero(self):
+        assert gold_retrieval_f1(0.0, 0.0) == 0.0
 
 
-def test_summarize_results_by_category() -> None:
-    summary = summarize_results(
-        [
-            EvaluationResult(
-                question="q",
-                baseline_answer="b",
-                memory_answer="m",
-                baseline_score=0.0,
-                memory_score=1.0,
-                expected_keywords=["x"],
-                baseline_hit_keywords=[],
-                memory_hit_keywords=["x"],
-                category="fact",
+class TestSmokeRunner:
+    def test_smoke_produces_raw_jsonl(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            r = subprocess.run(
+                [sys.executable, "tools/memorybank/run_phase1_baseline.py",
+                 "--smoke", "--top-k", "3", "--output-dir", tmpdir],
+                capture_output=True, text=True, cwd=ROOT,
             )
-        ]
-    )
-    assert summary["category_stats"]["fact"]["memory_avg"] == 1.0
+            assert r.returncode == 0, r.stderr
+            raw = list(Path(tmpdir, "raw").glob("*.jsonl"))
+            assert len(raw) == 1
+            lines = [json.loads(l) for l in raw[0].read_text().strip().split("\n") if l]
+            assert len(lines) == 5
+            for row in lines:
+                assert "paper_metrics" in row
+                assert row["local_only"] is True
+
+    def test_smoke_produces_summary(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            subprocess.run(
+                [sys.executable, "tools/memorybank/run_phase1_baseline.py",
+                 "--smoke", "--output-dir", tmpdir],
+                capture_output=True, cwd=ROOT,
+            )
+            sf = list(Path(tmpdir, "summaries").glob("*.json"))
+            assert len(sf) == 1
+            s = json.loads(sf[0].read_text())
+            assert s["probe_count"] == 5
+
+    def test_smoke_produces_resources(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            subprocess.run(
+                [sys.executable, "tools/memorybank/run_phase1_baseline.py",
+                 "--smoke", "--output-dir", tmpdir],
+                capture_output=True, cwd=ROOT,
+            )
+            rf = list(Path(tmpdir, "resources").glob("*.json"))
+            assert len(rf) == 1
+            r = json.loads(rf[0].read_text())
+            assert r["cloud_api_used"] is False
+            assert r["llm_called"] is False
+
+    def test_smoke_produces_csv(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            subprocess.run(
+                [sys.executable, "tools/memorybank/run_phase1_baseline.py",
+                 "--smoke", "--output-dir", tmpdir],
+                capture_output=True, cwd=ROOT,
+            )
+            cf = list(Path(tmpdir, "summaries").glob("*.csv"))
+            assert len(cf) == 1
+            lines = cf[0].read_text().strip().split("\n")
+            assert len(lines) == 6
+
+    def test_hash_embedding_no_cloud(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            subprocess.run(
+                [sys.executable, "tools/memorybank/run_phase1_baseline.py",
+                 "--smoke", "--embedding-backend", "hash", "--output-dir", tmpdir],
+                capture_output=True, cwd=ROOT,
+            )
+            rf = list(Path(tmpdir, "resources").glob("*.json"))
+            r = json.loads(rf[0].read_text())
+            assert r["embedding_backend"] == "hash"
+            assert r["cloud_api_used"] is False

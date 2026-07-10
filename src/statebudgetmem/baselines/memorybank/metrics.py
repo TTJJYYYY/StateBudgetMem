@@ -96,6 +96,14 @@ def evaluate_reproduction_row(
 
     retrieved = list(row.get("retrieved_memories", []))
     answer = str(row.get("template_answer") or row.get("prompt_template", ""))
+    retrieved_ids = row.get("retrieved_memory_ids") or [
+        str(item.get("memory_id", "")) for item in retrieved
+    ]
+    gold_ids = list(row.get("gold_memory_ids", []) or [])
+
+    gold_p = gold_retrieval_precision(retrieved_ids, gold_ids)
+    gold_r = gold_retrieval_recall(retrieved_ids, gold_ids)
+
     return {
         "memory_retrieval_accuracy": memory_retrieval_accuracy(
             retrieved,
@@ -114,6 +122,9 @@ def evaluate_reproduction_row(
             retrieved,
             spec.stale_keywords,
         ),
+        "gold_precision": gold_p,
+        "gold_recall": gold_r,
+        "gold_f1": gold_retrieval_f1(gold_p, gold_r),
         "retrieval_latency_ms": float(row.get("latency_ms", 0.0) or 0.0),
         "faiss_index_size": float(row.get("index_size", 0.0) or 0.0),
         "prompt_token_cost": float(row.get("prompt_token_estimate", 0.0) or 0.0),
@@ -128,6 +139,9 @@ def summarize_metric_rows(rows: Iterable[dict[str, Any]]) -> dict[str, float]:
             "response_correctness": 0.0,
             "contextual_coherence": 0.0,
             "stale_retrieval_rate": 0.0,
+            "gold_precision": 0.0,
+            "gold_recall": 0.0,
+            "gold_f1": 0.0,
             "mean_retrieval_latency_ms": 0.0,
             "mean_faiss_index_size": 0.0,
             "mean_prompt_token_cost": 0.0,
@@ -140,10 +154,47 @@ def summarize_metric_rows(rows: Iterable[dict[str, Any]]) -> dict[str, float]:
         "response_correctness": _mean(selected, "response_correctness"),
         "contextual_coherence": _mean(selected, "contextual_coherence"),
         "stale_retrieval_rate": _mean(selected, "stale_retrieval_rate"),
+        "gold_precision": _mean(selected, "gold_precision"),
+        "gold_recall": _mean(selected, "gold_recall"),
+        "gold_f1": _mean(selected, "gold_f1"),
         "mean_retrieval_latency_ms": _mean(selected, "retrieval_latency_ms"),
         "mean_faiss_index_size": _mean(selected, "faiss_index_size"),
         "mean_prompt_token_cost": _mean(selected, "prompt_token_cost"),
     }
+
+
+# ── Gold-label metrics (Phase 1 formal evaluation) ──────────────────────
+
+
+def gold_retrieval_precision(
+    retrieved_ids: list[str],
+    gold_ids: list[str],
+) -> float:
+    """Precision: fraction of retrieved memories that are gold."""
+    if not retrieved_ids or not gold_ids:
+        return 0.0
+    gold_set = set(gold_ids)
+    hits = sum(1 for mid in retrieved_ids if mid in gold_set)
+    return hits / len(retrieved_ids)
+
+
+def gold_retrieval_recall(
+    retrieved_ids: list[str],
+    gold_ids: list[str],
+) -> float:
+    """Recall: fraction of gold memories that were retrieved."""
+    if not gold_ids:
+        return 1.0
+    gold_set = set(gold_ids)
+    hits = sum(1 for mid in retrieved_ids if mid in gold_set)
+    return hits / len(gold_ids)
+
+
+def gold_retrieval_f1(precision: float, recall: float) -> float:
+    """F1 score for retrieval."""
+    if precision + recall == 0.0:
+        return 0.0
+    return 2.0 * precision * recall / (precision + recall)
 
 
 def _normalize_keywords(keywords: Iterable[str]) -> list[str]:
@@ -172,6 +223,9 @@ __all__ = [
     "MemoryBankMetricSpec",
     "contextual_coherence",
     "evaluate_reproduction_row",
+    "gold_retrieval_f1",
+    "gold_retrieval_precision",
+    "gold_retrieval_recall",
     "memory_retrieval_accuracy",
     "response_correctness",
     "stale_retrieval_rate_by_keywords",

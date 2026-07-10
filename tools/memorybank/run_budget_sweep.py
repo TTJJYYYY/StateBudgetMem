@@ -302,7 +302,7 @@ def run_budget_probe(
         prompt_context["retrieved_memories"],
         prompt_token_budget,
     )
-    template_answer = template_answer(probe.query, selected_memories)
+    answer = template_answer(probe.query, selected_memories)
     stats = memory_bank.get_stats()
     storage_size = estimate_memory_storage_size(memory_bank)
     row = {
@@ -331,7 +331,7 @@ def run_budget_probe(
             for item in selected_memories
             if str(item.get("memory_id", "")) in forgotten_memory_ids
         ],
-        "template_answer": template_answer,
+        "template_answer": answer,
         "retrieval_latency_ms": latency_ms,
         "latency_ms": latency_ms,
         "prompt_token_cost": selected_token_cost,

@@ -253,9 +253,135 @@ load_dataset = load_json_dataset
 __all__ = [
     "History",
     "Probe",
+    "ReproductionProbe",
+    "ReproductionUser",
     "DEMO_HISTORY",
     "DEMO_QUESTIONS",
     "load_json_dataset",
     "load_dataset",
     "load_memora_data",
+    "load_reproduction_dataset",
+    "load_user_file",
 ]
+
+# ── Phase 1 Reproduction Dataset ────────────────────────────────────────
+
+from dataclasses import dataclass, field
+from typing import Optional
+
+
+@dataclass
+class ReproductionUser:
+    """One user in the Phase 1 reproduction dataset."""
+
+    user_id: str
+    profile: dict = field(default_factory=dict)
+    days: list[dict] = field(default_factory=list)
+    global_summary: str = ""
+    user_portrait: str = ""
+
+
+@dataclass
+class ReproductionProbe:
+    """One probing question with gold labels."""
+
+    query_id: str
+    user_id: str
+    question: str
+    reference_answer: str = ""
+    gold_memory_ids: list[str] = field(default_factory=list)
+    expected_keywords: list[str] = field(default_factory=list)
+    question_type: str = "memory_recall"
+
+
+def load_reproduction_dataset(
+    dataset_dir: str | Path,
+) -> tuple[list[ReproductionUser], list[ReproductionProbe]]:
+    """Load the Phase 1 reproduction dataset.
+
+    Expects:
+        {dataset_dir}/
+        ├── users/
+        │   ├── user_001.json
+        │   └── ...
+        └── probing_questions.jsonl
+
+    Returns ``(users, probes)`` after format validation.
+    """
+    root = Path(dataset_dir)
+    users_dir = root / "users"
+    probes_path = root / "probing_questions.jsonl"
+
+    if not users_dir.is_dir():
+        raise FileNotFoundError(f"Users directory not found: {users_dir}")
+    if not probes_path.is_file():
+        raise FileNotFoundError(f"Probing questions not found: {probes_path}")
+
+    users: list[ReproductionUser] = []
+    for user_file in sorted(users_dir.glob("*.json")):
+        users.append(load_user_file(user_file))
+
+    user_ids = {u.user_id for u in users}
+    probes: list[ReproductionProbe] = []
+    with probes_path.open("r", encoding="utf-8") as fh:
+        for line in fh:
+            line = line.strip()
+            if not line:
+                continue
+            data = json.loads(line)
+            probe = ReproductionProbe(
+                query_id=str(data["query_id"]),
+                user_id=str(data["user_id"]),
+                question=str(data["question"]),
+                reference_answer=str(data.get("reference_answer", "")),
+                gold_memory_ids=[
+                    str(mid) for mid in data.get("gold_memory_ids", [])
+                ],
+                expected_keywords=[
+                    str(kw) for kw in data.get("expected_keywords", [])
+                ],
+                question_type=str(data.get("question_type", "memory_recall")),
+            )
+            if probe.user_id not in user_ids:
+                raise ValueError(
+                    f"Probe '{probe.query_id}' references unknown user "
+                    f"'{probe.user_id}'"
+                )
+            probes.append(probe)
+
+    # Validate at least one negative question exists per user
+    _validate_probe_types(probes, user_ids)
+
+    return users, probes
+
+
+def load_user_file(path: str | Path) -> ReproductionUser:
+    """Load a single user JSON file into a ReproductionUser."""
+    with open(path, "r", encoding="utf-8") as fh:
+        data = json.load(fh)
+
+    user = ReproductionUser(
+        user_id=str(data.get("user_id", "")),
+        profile=data.get("profile", {}),
+        days=data.get("days", []),
+        global_summary=str(data.get("global_event_summary", "")),
+        user_portrait=str(data.get("global_user_portrait", "")),
+    )
+    if not user.user_id:
+        raise ValueError(f"User file {path} missing 'user_id' field")
+    return user
+
+
+def _validate_probe_types(
+    probes: list[ReproductionProbe],
+    user_ids: set[str],
+) -> None:
+    """Check required question types exist for each user."""
+    for uid in user_ids:
+        user_probes = [p for p in probes if p.user_id == uid]
+        types = {p.question_type for p in user_probes}
+        if "negative_memory" not in types:
+            print(
+                f"[WARNING] User '{uid}' has no 'negative_memory' probe — "
+                f"consider adding one"
+            )
