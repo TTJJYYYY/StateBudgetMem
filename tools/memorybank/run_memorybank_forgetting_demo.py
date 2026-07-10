@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 import sys
 from datetime import datetime, timezone
@@ -17,6 +16,9 @@ if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
 from statebudgetmem.baselines.memorybank import MemoryBank  # noqa: E402
+from statebudgetmem.baselines.memorybank.embeddings import (  # noqa: E402
+    deterministic_hash_embedding,
+)
 
 
 class HashEmbeddingModel:
@@ -30,17 +32,7 @@ class HashEmbeddingModel:
         self.dim = dim
 
     def encode(self, text: str):
-        import numpy as np
-
-        vector = np.zeros(self.dim, dtype=np.float32)
-        for token in text.lower().split():
-            digest = hashlib.md5(token.encode("utf-8")).digest()
-            index = digest[0] % self.dim
-            sign = 1.0 if digest[1] % 2 == 0 else -1.0
-            vector[index] += sign
-        if not vector.any():
-            vector[0] = 1.0
-        return vector
+        return deterministic_hash_embedding(text, dim=self.dim)
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -55,6 +47,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--top-k", type=int, default=2)
     parser.add_argument("--forgetting-threshold", type=float, default=0.3)
     parser.add_argument("--embedding-dim", type=int, default=32)
+    parser.add_argument("--retention-time-unit-hours", type=float, default=24.0)
     parser.add_argument(
         "--recall-time",
         default="2026-06-21 10:00",
@@ -70,15 +63,14 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
+
     try:
-        memory_bank = MemoryBank(
-            forgetting_threshold=args.forgetting_threshold,
-            embedding_model=HashEmbeddingModel(dim=args.embedding_dim),
-        )
+        reinforcement_bank = _build_seeded_memory_bank(args)
+        default_bank = _build_seeded_memory_bank(args)
+        filtered_bank = _build_seeded_memory_bank(args)
     except ImportError as exc:
         raise SystemExit(str(exc)) from exc
 
-    _seed_memories(memory_bank)
     queries = [
         "What Python book did you recommend?",
         "What food should I avoid now?",
@@ -86,7 +78,7 @@ def main(argv: list[str] | None = None) -> int:
 
     reinforcement_rows: list[dict[str, Any]] = []
     for query in queries:
-        retrieved = memory_bank.retrieve(
+        retrieved = reinforcement_bank.retrieve(
             query,
             top_k=args.top_k,
             current_time=args.recall_time,
@@ -94,10 +86,30 @@ def main(argv: list[str] | None = None) -> int:
         for item in retrieved:
             reinforcement_rows.append(_reinforcement_row(item))
 
-    forgetting_report = memory_bank.update_forgetting_with_log(
+    forgetting_report = reinforcement_bank.update_forgetting_with_log(
         current_time=args.forgetting_time,
     )
     forgetting_rows = forgetting_report["events"]
+
+    comparison_query = queries[1]
+    default_context = default_bank.build_augmented_prompt(
+        comparison_query,
+        current_time=args.forgetting_time,
+        top_k=args.top_k,
+        exclude_forgotten=False,
+    )
+    before_filtered_state = _memory_state(filtered_bank)
+    filtered_context = filtered_bank.build_augmented_prompt(
+        comparison_query,
+        current_time=args.forgetting_time,
+        top_k=args.top_k,
+        exclude_forgotten=True,
+    )
+    excluded_ids = filtered_context["excluded_forgotten_memory_ids"]
+    excluded_memories_unchanged = bool(excluded_ids) and all(
+        before_filtered_state.get(memory_id) == _memory_state(filtered_bank).get(memory_id)
+        for memory_id in excluded_ids
+    )
 
     args.results_dir.mkdir(parents=True, exist_ok=True)
     reinforcement_path = args.results_dir / "memorybank_reinforcement_log.jsonl"
@@ -112,6 +124,7 @@ def main(argv: list[str] | None = None) -> int:
         "cloud_api_used": False,
         "top_k": args.top_k,
         "forgetting_threshold": args.forgetting_threshold,
+        "retention_time_unit_hours": args.retention_time_unit_hours,
         "recall_time": args.recall_time,
         "forgetting_time": args.forgetting_time,
         "reinforcement_log_path": str(reinforcement_path),
@@ -119,7 +132,24 @@ def main(argv: list[str] | None = None) -> int:
         "forgotten_memory_ids": forgetting_report["forgotten_memory_ids"],
         "reinforcement_event_count": len(reinforcement_rows),
         "forgetting_event_count": len(forgetting_rows),
-        "memory_stats": memory_bank.get_stats(),
+        "default_prompt_retrieved_memory_ids": default_context[
+            "retrieved_memory_ids"
+        ],
+        "filtered_prompt_retrieved_memory_ids": filtered_context[
+            "retrieved_memory_ids"
+        ],
+        "default_forgotten_memory_ids": default_context["forgotten_memory_ids"],
+        "filtered_forgotten_memory_ids": filtered_context["forgotten_memory_ids"],
+        "excluded_forgotten_memory_ids": excluded_ids,
+        "excluded_forgotten_count": filtered_context["excluded_forgotten_count"],
+        "default_retention_time_unit_hours": default_context[
+            "retention_time_unit_hours"
+        ],
+        "filtered_retention_time_unit_hours": filtered_context[
+            "retention_time_unit_hours"
+        ],
+        "excluded_memories_unchanged": excluded_memories_unchanged,
+        "memory_stats": reinforcement_bank.get_stats(),
     }
     summary_path.write_text(
         json.dumps(summary, ensure_ascii=False, indent=2, sort_keys=True),
@@ -127,6 +157,16 @@ def main(argv: list[str] | None = None) -> int:
     )
     print(json.dumps(summary, ensure_ascii=False, indent=2))
     return 0
+
+
+def _build_seeded_memory_bank(args: argparse.Namespace) -> MemoryBank:
+    bank = MemoryBank(
+        forgetting_threshold=args.forgetting_threshold,
+        decay_interval_hours=args.retention_time_unit_hours,
+        embedding_model=HashEmbeddingModel(dim=args.embedding_dim),
+    )
+    _seed_memories(bank)
+    return bank
 
 
 def _seed_memories(memory_bank: MemoryBank) -> None:
@@ -145,6 +185,17 @@ def _seed_memories(memory_bank: MemoryBank) -> None:
         "My stomach is uncomfortable, so I should avoid spicy food for now.",
         "2026-06-20 11:00",
     )
+
+
+def _memory_state(memory_bank: MemoryBank) -> dict[str, dict[str, Any]]:
+    return {
+        memory.memory_id: {
+            "strength": memory.strength,
+            "last_accessed": memory.last_accessed,
+            "access_count": memory.access_count,
+        }
+        for memory in memory_bank.get_all()
+    }
 
 
 def _reinforcement_row(item: dict[str, Any]) -> dict[str, Any]:

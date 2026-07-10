@@ -17,11 +17,12 @@
 | FAISS 检索 | ✅ | embedding + index search |
 | Memory Strength | ✅ | recall 后 S+=1 |
 | last_accessed 更新 | ✅ | recall 后更新 |
-| Ebbinghaus 遗忘 R=exp(-t/S) | ✅ | 可配置 threshold |
+| Ebbinghaus 遗忘 R=exp(-t/S) | ✅ | `t` 默认以一天为单位，可通过 retention time unit 配置 |
 | forgetting log | ✅ | 输出遗忘事件 |
+| 可选 hard exclusion | ✅ | `--exclude-forgotten` 作为端侧/消融策略 |
 | build_augmented_prompt() | ✅ | retrieval context + portrait + summary |
 | hash embedding (CI) | ✅ | 确定性本地 embedding |
-| sentence-transformer embedding | ✅ | 真实语义 embedding（需下载模型） |
+| sentence-transformer embedding | ✅ | 本地语义 embedding（首次可能需下载或使用本地路径） |
 
 ## 3. 使用的数据集
 
@@ -77,13 +78,24 @@ python tools/memorybank/run_budget_sweep.py --quick
 
 | 维度 | 原论文 | 本复现 |
 |------|--------|--------|
-| embedding | 未知 | all-MiniLM-L6-v2 / hash |
+| embedding | English: MiniLM; Chinese: Text2vec | sentence-transformer / hash |
 | 用户数 | 15 | 5 |
 | 天数 | 10 | 5-10 |
 | 评测方式 | 人工标注 | gold labels + keyword proxy |
 | LLM 调用 | 云端 LLM 生成 summary | fixture（预设） |
-| 遗忘策略 | 不影响检索 | 可选 exclude-forgotten |
+| 遗忘策略 | 基于 Ebbinghaus retention 和 recall reinforcement 的简化更新机制 | 默认记录 retention；另提供可选 hard threshold exclusion 作为端侧/消融策略；`update_forgetting_with_log()` 中 forgotten 后 `strength *= 0.5` 是项目遗留简化，不是论文原始规定 |
 | SiliconFriend 微调 | 有 | 无 |
+
+`--exclude-forgotten` 不是原论文唯一指定行为。默认模式保持基线兼容：
+记录 retention 和 forgotten 标记，但不强制从 retrieval/prompt 中移除。
+开启该开关后，低于 threshold 的候选不进入最终 Top-K、不进入 prompt、
+也不会因本次 query 被强化。
+
+当前实现中，retention 公式的 `t` 使用
+`elapsed_seconds / decay_interval_sec`；默认 `decay_interval_hours=24.0`，
+即 24 小时对应 `t=1`。raw retrieval rows 和 forgetting events 会记录
+`elapsed_hours`、`elapsed_time_units` 和 `retention_time_unit_hours`，方便确认
+当前使用的时间单位。这里仅更新机制说明，不填写尚未产生的正式实验结果。
 
 ## 9. 当前限制
 

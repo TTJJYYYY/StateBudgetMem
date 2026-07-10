@@ -9,7 +9,6 @@ construction outputs without calling a cloud LLM.
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 import platform
 import statistics
@@ -28,6 +27,9 @@ if str(SRC) not in sys.path:
 from statebudgetmem.baselines.memorybank import (  # noqa: E402
     MemoryBank,
     build_paper_aligned_storage,
+)
+from statebudgetmem.baselines.memorybank.embeddings import (  # noqa: E402
+    deterministic_hash_embedding,
 )
 from statebudgetmem.baselines.memorybank.metrics import (  # noqa: E402
     MemoryBankMetricSpec,
@@ -68,17 +70,7 @@ class HashEmbeddingModel:
         self.dim = dim
 
     def encode(self, text: str):
-        import numpy as np
-
-        vector = np.zeros(self.dim, dtype=np.float32)
-        for token in text.lower().split():
-            digest = hashlib.md5(token.encode("utf-8")).digest()
-            index = digest[0] % self.dim
-            sign = 1.0 if digest[1] % 2 == 0 else -1.0
-            vector[index] += sign
-        if not vector.any():
-            vector[0] = 1.0
-        return vector
+        return deterministic_hash_embedding(text, dim=self.dim)
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -99,6 +91,15 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--top-k", type=int, default=3)
     parser.add_argument("--embedding-dim", type=int, default=32)
     parser.add_argument("--forgetting-threshold", type=float, default=0.3)
+    parser.add_argument("--retention-time-unit-hours", type=float, default=24.0)
+    parser.add_argument(
+        "--exclude-forgotten",
+        action="store_true",
+        help=(
+            "Exclude candidates whose retention is below the "
+            "forgetting threshold from retrieval and prompt."
+        ),
+    )
     parser.add_argument(
         "--current-time",
         default="2026-06-24 10:00",
@@ -132,6 +133,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         memory_bank = MemoryBank(
             forgetting_threshold=args.forgetting_threshold,
+            decay_interval_hours=args.retention_time_unit_hours,
             embedding_model=HashEmbeddingModel(dim=args.embedding_dim),
         )
     except ImportError as exc:
@@ -148,6 +150,9 @@ def main(argv: list[str] | None = None) -> int:
             top_k=args.top_k,
             current_time=args.current_time,
             run_id=run_id,
+            exclude_forgotten=args.exclude_forgotten,
+            embedding_dim=args.embedding_dim,
+            retention_time_unit_hours=args.retention_time_unit_hours,
         )
         for index, query in enumerate(queries, start=1)
     ]
@@ -193,12 +198,16 @@ def _run_query(
     top_k: int,
     current_time: str,
     run_id: str,
+    exclude_forgotten: bool,
+    embedding_dim: int,
+    retention_time_unit_hours: float,
 ) -> dict[str, Any]:
     started = time.perf_counter()
     prompt_context = memory_bank.build_augmented_prompt(
         query=query,
         current_time=current_time,
         top_k=top_k,
+        exclude_forgotten=exclude_forgotten,
     )
     latency_ms = (time.perf_counter() - started) * 1000.0
     prompt = str(prompt_context["prompt_template"])
@@ -216,11 +225,53 @@ def _run_query(
         "prompt_sections": prompt_context["prompt_sections"],
         "prompt_template": prompt,
         "latency_ms": latency_ms,
-        "prompt_token_estimate": estimate_token_count(prompt),
+        "prompt_token_estimate": prompt_context.get(
+            "prompt_token_estimate",
+            estimate_token_count(prompt),
+        ),
+        "forgotten_memory_ids": prompt_context.get("forgotten_memory_ids", []),
+        "excluded_forgotten_memory_ids": prompt_context.get(
+            "excluded_forgotten_memory_ids",
+            [],
+        ),
+        "excluded_forgotten_count": prompt_context.get(
+            "excluded_forgotten_count",
+            0,
+        ),
+        "candidate_count_before_forgetting": prompt_context.get(
+            "candidate_count_before_forgetting",
+            0,
+        ),
+        "candidate_count_after_forgetting": prompt_context.get(
+            "candidate_count_after_forgetting",
+            0,
+        ),
+        "exclude_forgotten": prompt_context.get(
+            "exclude_forgotten",
+            exclude_forgotten,
+        ),
+        "forgetting_threshold": prompt_context.get("forgetting_threshold"),
+        "retention_time_unit_hours": prompt_context.get(
+            "retention_time_unit_hours",
+            retention_time_unit_hours,
+        ),
+        "strength_before_after": prompt_context.get("strength_before_after", []),
+        "last_accessed_before_after": prompt_context.get(
+            "last_accessed_before_after",
+            [],
+        ),
+        "access_count_before_after": prompt_context.get(
+            "access_count_before_after",
+            [],
+        ),
         "index_size": int(stats.get("index_size", 0) or 0),
         "memory_count": int(stats.get("total_memories", 0) or 0),
+        "embedding_backend": "hash",
+        "embedding_model": "deterministic_hash_embedding",
+        "embedding_dim": embedding_dim,
         "local_only": True,
         "cloud_api_used": False,
+        "llm_called": False,
     }
     row["template_answer"] = _template_answer(row)
     metric_spec = DEFAULT_METRIC_SPECS.get(
@@ -281,6 +332,12 @@ def _build_summary(
     latencies = [float(row["latency_ms"]) for row in raw_rows]
     token_counts = [int(row["prompt_token_estimate"]) for row in raw_rows]
     retrieved_counts = [int(row["retrieved_count"]) for row in raw_rows]
+    forgotten_counts = [
+        len(row.get("forgotten_memory_ids", [])) for row in raw_rows
+    ]
+    excluded_counts = [
+        len(row.get("excluded_forgotten_memory_ids", [])) for row in raw_rows
+    ]
     paper_metric_rows = [dict(row.get("paper_metrics", {})) for row in raw_rows]
     return {
         "run_id": run_id,
@@ -290,6 +347,12 @@ def _build_summary(
         "local_only": True,
         "cloud_api_used": False,
         "llm_called": False,
+        "embedding_backend": "hash",
+        "embedding_model": "deterministic_hash_embedding",
+        "embedding_dim": args.embedding_dim,
+        "forgetting_threshold": args.forgetting_threshold,
+        "retention_time_unit_hours": args.retention_time_unit_hours,
+        "exclude_forgotten": getattr(args, "exclude_forgotten", False),
         "top_k": args.top_k,
         "query_count": len(raw_rows),
         "mean_latency_ms": statistics.fmean(latencies) if latencies else 0.0,
@@ -300,6 +363,14 @@ def _build_summary(
         "mean_retrieved_count": statistics.fmean(retrieved_counts)
         if retrieved_counts
         else 0.0,
+        "total_forgotten_candidates": sum(forgotten_counts),
+        "total_excluded_forgotten": sum(excluded_counts),
+        "mean_forgotten_candidates_per_query": (
+            statistics.fmean(forgotten_counts) if forgotten_counts else 0.0
+        ),
+        "mean_excluded_forgotten_per_query": (
+            statistics.fmean(excluded_counts) if excluded_counts else 0.0
+        ),
         "paper_metrics": summarize_metric_rows(paper_metric_rows),
         "elapsed_ms": elapsed_ms,
         "raw_jsonl_path": str(raw_path),
@@ -325,12 +396,16 @@ def _build_resources(
         "created_at": datetime.now(timezone.utc).isoformat(),
         "local_only": True,
         "cloud_api_used": False,
+        "llm_called": False,
         "python_version": platform.python_version(),
         "platform": platform.platform(),
         "processor": platform.processor(),
+        "embedding_backend": "hash",
         "embedding_model": "deterministic_hash_embedding",
         "embedding_dim": args.embedding_dim,
         "forgetting_threshold": args.forgetting_threshold,
+        "retention_time_unit_hours": args.retention_time_unit_hours,
+        "exclude_forgotten": getattr(args, "exclude_forgotten", False),
         "top_k": args.top_k,
         "elapsed_ms": elapsed_ms,
         "peak_tracemalloc_bytes": peak_memory_bytes,
