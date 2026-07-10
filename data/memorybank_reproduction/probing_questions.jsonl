@@ -1,0 +1,99 @@
+{"query_id":"q001","user_id":"user_001","question":"What programming language did I start learning?","question_type":"memory_recall","reference_answer":"Python","gold_memory_ids":["user_001_day01_dialog01"],"expected_keywords":["Python"]}
+
+{"query_id":"q002","user_id":"user_001","question":"Why did I start learning Python?","question_type":"memory_recall","reference_answer":"I wanted to use Python for data analysis.","gold_memory_ids":["user_001_day01_dialog01"],"expected_keywords":["data analysis","Python"]}
+
+{"query_id":"q003","user_id":"user_001","question":"What project did I work on during this period?","question_type":"event_summary","reference_answer":"I completed a data analysis project.","gold_memory_ids":["user_001_day07_dialog01"],"expected_keywords":["data analysis project"]}
+
+{"query_id":"q004","user_id":"user_001","question":"What career goal did I have at the end?","question_type":"memory_recall","reference_answer":"I wanted to become an AI software engineer.","gold_memory_ids":["user_001_day07_dialog03"],"expected_keywords":["AI","software engineer"]}
+
+{"query_id":"q005","user_id":"user_001","question":"What did I originally plan before changing my direction?","question_type":"temporal_memory","reference_answer":"I originally planned to prepare for graduate school.","gold_memory_ids":["user_001_day01_dialog03"],"expected_keywords":["graduate school"]}
+
+{"query_id":"q006","user_id":"user_001","question":"How did my career plan change over time?","question_type":"temporal_memory","reference_answer":"I changed from preparing for graduate school to pursuing software and AI development.","gold_memory_ids":["user_001_day01_dialog03","user_001_day05_dialog01","user_001_day07_dialog03"],"expected_keywords":["graduate school","software","AI"]}
+
+{"query_id":"q007","user_id":"user_001","question":"What technology did I study after changing my career plan?","question_type":"memory_recall","reference_answer":"I studied machine learning.","gold_memory_ids":["user_001_day06_dialog01"],"expected_keywords":["machine learning"]}
+
+{"query_id":"q008","user_id":"user_001","question":"What kind of person am I according to my long-term profile?","question_type":"user_portrait","reference_answer":"I am motivated, technology-oriented, and enjoy continuous learning.","gold_memory_ids":[],"expected_keywords":["motivated","learning"]}
+
+{"query_id":"q009","user_id":"user_001","question":"Did I ever mention learning Java as my main goal?","question_type":"negative_memory","reference_answer":"No, I did not mention learning Java as my main goal.","gold_memory_ids":[],"expected_keywords":["No"]}
+
+{"query_id":"q010","user_id":"user_001","question":"What habit did I maintain besides studying?","question_type":"memory_recall","reference_answer":"I maintained a running habit.","gold_memory_ids":["user_001_day02_dialog03"],"expected_keywords":["running"]}
+
+{"query_id":"q011","user_id":"user_002","question":"What drink did I often have when I felt stressed?","question_type":"memory_recall","reference_answer":"I often drank milk tea.","gold_memory_ids":["user_002_day01_dialog01"],"expected_keywords":["milk tea"]}
+
+{"query_id":"q012","user_id":"user_002","question":"What kind of food did I enjoy before changing my lifestyle?","question_type":"temporal_memory","reference_answer":"I enjoyed desserts such as cakes and chocolate.","gold_memory_ids":["user_002_day01_dialog03"],"expected_keywords":["desserts","cake","chocolate"]}
+
+{"query_id":"q013","user_id":"user_002","question":"What exercise did I start doing?","question_type":"memory_recall","reference_answer":"I started running.","gold_memory_ids":["user_002_day03_dialog01"],"expected_keywords":["running"]}
+
+{"query_id":"q014","user_id":"user_002","question":"How did my eating habits change over time?","question_type":"temporal_memory","reference_answer":"I changed from eating desserts and drinking milk tea to choosing healthier food and reducing sugar intake.","gold_memory_ids":["user_002_day01_dialog01","user_002_day05_dialog03","user_002_day07_dialog03"],"expected_keywords":["milk tea","desserts","healthy","sugar"]}
+
+{"query_id":"q015","user_id":"user_002","question":"What healthy habit did I maintain recently?","question_type":"event_summary","reference_answer":"I maintained a regular running habit.","gold_memory_ids":["user_002_day06_dialog01"],"expected_keywords":["running"]}
+
+{"query_id":"q016","user_id":"user_002","question":"What kind of person am I according to my portrait?","question_type":"user_portrait","reference_answer":"I am disciplined, health-oriented, and willing to improve myself.","gold_memory_ids":[],"expected_keywords":["disciplined","health"]}
+
+{"query_id":"q017","user_id":"user_002","question":"Why did I decide to change my lifestyle?","question_type":"event_summary","reference_answer":"I wanted to improve my health after noticing weight gain.","gold_memory_ids":["user_002_day02_dialog01"],"expected_keywords":["weight","health"]}
+
+{"query_id":"q018","user_id":"user_002","question":"Did I start swimming as my new exercise habit?","question_type":"negative_memory","reference_answer":"No, I did not start swimming.","gold_memory_ids":[],"expected_keywords":["No"]}
+
+{"query_id":"q019","user_id":"user_002","question":"What food did I prefer instead of desserts later?","question_type":"memory_recall","reference_answer":"I preferred fruits instead of desserts.","gold_memory_ids":["user_002_day05_dialog03"],"expected_keywords":["fruit"]}
+
+{"query_id":"q020","user_id":"user_002","question":"What lifestyle goal did I develop?","question_type":"user_portrait","reference_answer":"I wanted to maintain a healthier lifestyle through exercise and diet control.","gold_memory_ids":["user_002_day07_dialog01"],"expected_keywords":["healthy","exercise"]}
+
+{"query_id":"q021","user_id":"user_003","question":"Which programming language did I start using for projects?","question_type":"memory_recall","reference_answer":"Python.","gold_memory_ids":["user_003_day01_dialog03"],"expected_keywords":["Python"]}
+
+{"query_id":"q022","user_id":"user_003","question":"Which algorithm did I study?","question_type":"memory_recall","reference_answer":"I studied quicksort.","gold_memory_ids":["user_003_day02_dialog01"],"expected_keywords":["quicksort"]}
+
+{"query_id":"q023","user_id":"user_003","question":"What framework did I use for my web project?","question_type":"memory_recall","reference_answer":"I used Flask.","gold_memory_ids":["user_003_day03_dialog01"],"expected_keywords":["Flask"]}
+
+{"query_id":"q024","user_id":"user_003","question":"What database did I add to my project?","question_type":"memory_recall","reference_answer":"I added MySQL database support.","gold_memory_ids":["user_003_day04_dialog01"],"expected_keywords":["MySQL"]}
+
+{"query_id":"q025","user_id":"user_003","question":"What did I upload to GitHub?","question_type":"event_summary","reference_answer":"I uploaded my project code to GitHub.","gold_memory_ids":["user_003_day05_dialog01"],"expected_keywords":["GitHub","project"]}
+
+{"query_id":"q026","user_id":"user_003","question":"What technical field am I interested in?","question_type":"user_portrait","reference_answer":"I am interested in programming, algorithms, and software engineering.","gold_memory_ids":[],"expected_keywords":["programming","algorithm"]}
+
+{"query_id":"q027","user_id":"user_003","question":"What search algorithm did I review?","question_type":"memory_recall","reference_answer":"I reviewed binary search.","gold_memory_ids":["user_003_day06_dialog01"],"expected_keywords":["binary search"]}
+
+{"query_id":"q028","user_id":"user_003","question":"What kind of developer did I want to become?","question_type":"memory_recall","reference_answer":"I wanted to become a backend developer.","gold_memory_ids":["user_003_day07_dialog03"],"expected_keywords":["backend developer"]}
+
+{"query_id":"q029","user_id":"user_003","question":"Did I build a mobile application project?","question_type":"negative_memory","reference_answer":"No, I did not mention building a mobile application project.","gold_memory_ids":[],"expected_keywords":["No"]}
+
+{"query_id":"q030","user_id":"user_003","question":"What project experience did I gain?","question_type":"event_summary","reference_answer":"I developed a Flask backend project with database support.","gold_memory_ids":["user_003_day03_dialog01","user_003_day04_dialog01"],"expected_keywords":["Flask","backend","database"]}
+
+{"query_id":"q031","user_id":"user_004","question":"What hobby did I start developing?","question_type":"memory_recall","reference_answer":"I started developing an interest in photography.","gold_memory_ids":["user_004_day01_dialog01"],"expected_keywords":["photography"]}
+
+{"query_id":"q032","user_id":"user_004","question":"What photography skills did I learn?","question_type":"memory_recall","reference_answer":"I learned composition and lighting techniques.","gold_memory_ids":["user_004_day02_dialog01","user_004_day02_dialog03"],"expected_keywords":["composition","lighting"]}
+
+{"query_id":"q033","user_id":"user_004","question":"What activities do I enjoy according to my portrait?","question_type":"user_portrait","reference_answer":"I enjoy photography, travel, music, and art.","gold_memory_ids":[],"expected_keywords":["photography","travel","music"]}
+
+{"query_id":"q034","user_id":"user_004","question":"Why do I like traveling?","question_type":"event_summary","reference_answer":"Travel gives me inspiration for creative work.","gold_memory_ids":["user_004_day03_dialog03"],"expected_keywords":["inspiration","creative"]}
+
+{"query_id":"q035","user_id":"user_004","question":"What artistic activity did I explore?","question_type":"memory_recall","reference_answer":"I visited an art exhibition.","gold_memory_ids":["user_004_day05_dialog01"],"expected_keywords":["art exhibition"]}
+
+{"query_id":"q036","user_id":"user_004","question":"How would you describe my personality?","question_type":"user_portrait","reference_answer":"I am creative, open-minded, and curious.","gold_memory_ids":[],"expected_keywords":["creative","curious"]}
+
+{"query_id":"q037","user_id":"user_004","question":"What did I prepare to share with others?","question_type":"memory_recall","reference_answer":"I prepared to share my photography works.","gold_memory_ids":["user_004_day06_dialog01"],"expected_keywords":["photography works"]}
+
+{"query_id":"q038","user_id":"user_004","question":"What combination of interests did I mention?","question_type":"event_summary","reference_answer":"I combined music and photography to express emotions.","gold_memory_ids":["user_004_day04_dialog03"],"expected_keywords":["music","photography"]}
+
+{"query_id":"q039","user_id":"user_004","question":"Did I mention that I dislike photography?","question_type":"negative_memory","reference_answer":"No, I did not mention disliking photography.","gold_memory_ids":[],"expected_keywords":["No"]}
+
+{"query_id":"q040","user_id":"user_004","question":"What skill did I want to improve in the future?","question_type":"memory_recall","reference_answer":"I wanted to improve my photography skills.","gold_memory_ids":["user_004_day07_dialog03"],"expected_keywords":["photography"]}
+
+{"query_id":"q041","user_id":"user_005","question":"What career path did I initially consider?","question_type":"temporal_memory","reference_answer":"I initially considered preparing for civil service exams.","gold_memory_ids":["user_005_day01_dialog01"],"expected_keywords":["civil service"]}
+
+{"query_id":"q042","user_id":"user_005","question":"What industry did I later explore?","question_type":"memory_recall","reference_answer":"I explored the internet industry.","gold_memory_ids":["user_005_day02_dialog01"],"expected_keywords":["internet"]}
+
+{"query_id":"q043","user_id":"user_005","question":"What job position became my career goal?","question_type":"memory_recall","reference_answer":"I wanted to become an internet product manager.","gold_memory_ids":["user_005_day07_dialog03"],"expected_keywords":["product manager"]}
+
+{"query_id":"q044","user_id":"user_005","question":"How did my career plan change?","question_type":"temporal_memory","reference_answer":"I changed from considering civil service exams to pursuing product management in the internet industry.","gold_memory_ids":["user_005_day01_dialog01","user_005_day04_dialog01","user_005_day07_dialog03"],"expected_keywords":["civil service","product manager"]}
+
+{"query_id":"q045","user_id":"user_005","question":"What skills did I learn for product management?","question_type":"memory_recall","reference_answer":"I learned product design and user research methods.","gold_memory_ids":["user_005_day04_dialog03"],"expected_keywords":["product design","user research"]}
+
+{"query_id":"q046","user_id":"user_005","question":"What interview did I attend?","question_type":"event_summary","reference_answer":"I attended a product-related internship interview.","gold_memory_ids":["user_005_day06_dialog01"],"expected_keywords":["product","internship interview"]}
+
+{"query_id":"q047","user_id":"user_005","question":"What are my interests according to my portrait?","question_type":"user_portrait","reference_answer":"I am interested in career development, business, and technology.","gold_memory_ids":[],"expected_keywords":["career","business","technology"]}
+
+{"query_id":"q048","user_id":"user_005","question":"Why did I change my original career plan?","question_type":"event_summary","reference_answer":"I wanted a more creative career combining technology and business.","gold_memory_ids":["user_005_day03_dialog03"],"expected_keywords":["creative","technology","business"]}
+
+{"query_id":"q049","user_id":"user_005","question":"Did I decide to become a doctor?","question_type":"negative_memory","reference_answer":"No, I did not mention becoming a doctor.","gold_memory_ids":[],"expected_keywords":["No"]}
+
+{"query_id":"q050","user_id":"user_005","question":"What kind of person am I according to my portrait?","question_type":"user_portrait","reference_answer":"I am ambitious, adaptable, and thoughtful about career development.","gold_memory_ids":[],"expected_keywords":["ambitious","adaptable"]}
