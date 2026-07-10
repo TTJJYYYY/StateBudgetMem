@@ -29,6 +29,9 @@ if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
 from statebudgetmem.baselines.memorybank import MemoryBank  # noqa: E402
+from statebudgetmem.baselines.memorybank.embeddings import (  # noqa: E402
+    deterministic_hash_embedding,
+)
 from statebudgetmem.baselines.memorybank.metrics import (  # noqa: E402
     MemoryBankMetricSpec,
     evaluate_reproduction_row,
@@ -121,6 +124,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default="all-MiniLM-L6-v2",
         help="Model name for sentence-transformer backend.",
     )
+    parser.add_argument("--embedding-dim", type=int, default=32)
     parser.add_argument(
         "--exclude-forgotten",
         action="store_true",
@@ -143,6 +147,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         type=float,
         default=0.3,
     )
+    parser.add_argument("--retention-time-unit-hours", type=float, default=24.0)
     parser.add_argument(
         "--current-time",
         default="2026-06-24 10:00",
@@ -176,6 +181,9 @@ def main(argv: list[str] | None = None) -> int:
 
     # 1. Build MemoryBank
     memory_bank = _build_memory_bank(args)
+    dataset_source = (
+        "built_in_smoke_sample" if args.smoke else str(args.dataset_dir)
+    )
 
     # 2. Ingest data
     if args.smoke:
@@ -204,7 +212,13 @@ def main(argv: list[str] | None = None) -> int:
         ]
 
     # 3. Run probes
-    rows = _run_probes(memory_bank, probes, args)
+    rows = _run_probes(
+        memory_bank,
+        probes,
+        args,
+        run_id=run_id,
+        dataset_source=dataset_source,
+    )
     elapsed_ms = (time.perf_counter() - started) * 1000.0
     _, peak_memory = tracemalloc.get_traced_memory()
     tracemalloc.stop()
@@ -212,12 +226,12 @@ def main(argv: list[str] | None = None) -> int:
     # 4. Output
     _write_jsonl(raw_path, rows)
     summary = _build_summary(rows, run_id, args, raw_path, summary_path,
-                             csv_path, resources_path, elapsed_ms)
+                             csv_path, resources_path, elapsed_ms, dataset_source)
     _write_json(summary_path, summary)
     _write_csv(csv_path, rows)
     resources = _build_resources(args, run_id, rows, raw_path, summary_path,
                                  resources_path, elapsed_ms, peak_memory,
-                                 memory_bank)
+                                 memory_bank, dataset_source)
     _write_json(resources_path, resources)
 
     print(json.dumps(summary, ensure_ascii=False, indent=2))
@@ -230,25 +244,19 @@ def main(argv: list[str] | None = None) -> int:
 def _build_memory_bank(args: argparse.Namespace) -> MemoryBank:
     """Build a MemoryBank with the selected embedding backend."""
     if args.embedding_backend == "hash":
-        import hashlib
-
         class _HashEmbed:
-            def __init__(self, dim: int = 128):
+            def __init__(self, dim: int):
                 self.dim = dim
 
             def encode(self, text: str):
-                import numpy as np
-                v = np.zeros(self.dim, dtype=np.float32)
-                for token in text.lower().split():
-                    d = hashlib.md5(token.encode()).digest()
-                    v[d[0] % self.dim] += 1.0 if d[1] % 2 else -1.0
-                if not v.any():
-                    v[0] = 1.0
-                return v
+                return deterministic_hash_embedding(text, dim=self.dim)
 
+        args.actual_embedding_dim = args.embedding_dim
         return MemoryBank(
+            embedding_dim=args.embedding_dim,
             forgetting_threshold=args.forgetting_threshold,
-            embedding_model=_HashEmbed(),
+            decay_interval_hours=args.retention_time_unit_hours,
+            embedding_model=_HashEmbed(args.embedding_dim),
         )
     else:
         try:
@@ -257,12 +265,28 @@ def _build_memory_bank(args: argparse.Namespace) -> MemoryBank:
         except Exception as e:
             raise SystemExit(
                 f"Failed to load sentence-transformer model "
-                f"'{args.embedding_model}': {e}"
+                f"'{args.embedding_model}'. Install optional dependencies with "
+                f"pip install -e \".[memorybank]\". For offline runs, use a "
+                f"cached model or pass a local model directory. Original error: {e}"
             ) from e
+        actual_dim = int(model.get_sentence_embedding_dimension())
+        args.actual_embedding_dim = actual_dim
         return MemoryBank(
+            embedding_dim=actual_dim,
             forgetting_threshold=args.forgetting_threshold,
+            decay_interval_hours=args.retention_time_unit_hours,
             embedding_model=model,
         )
+
+
+def _embedding_metadata(args: argparse.Namespace) -> tuple[str, str]:
+    if args.embedding_backend == "hash":
+        return "hash", "deterministic_hash_embedding"
+    return "sentence-transformer", args.embedding_model
+
+
+def _embedding_dim(args: argparse.Namespace) -> int:
+    return int(getattr(args, "actual_embedding_dim", args.embedding_dim))
 
 
 def _ingest_users(memory_bank: MemoryBank, users: list) -> None:
@@ -306,31 +330,35 @@ def _run_probes(
     memory_bank: MemoryBank,
     probes: list[dict],
     args: argparse.Namespace,
+    run_id: str,
+    dataset_source: str,
 ) -> list[dict]:
     rows: list[dict] = []
+    embedding_backend, embedding_model = _embedding_metadata(args)
+    embedding_dim = _embedding_dim(args)
     for probe in probes:
         started = time.perf_counter()
-        retrieved = memory_bank.retrieve(
-            probe["question"],
-            top_k=args.top_k,
-            current_time=args.current_time,
-        )
-        latency_ms = (time.perf_counter() - started) * 1000.0
-
         prompt_ctx = memory_bank.build_augmented_prompt(
             query=probe["question"],
             current_time=args.current_time,
             top_k=args.top_k,
+            exclude_forgotten=args.exclude_forgotten,
         )
+        latency_ms = (time.perf_counter() - started) * 1000.0
 
+        retrieved = prompt_ctx["retrieved_memories"]
         retrieved_ids = [str(r.get("memory_id", "")) for r in retrieved]
         template = _template_answer(probe["question"], retrieved)
+        stats = memory_bank.get_stats()
+        index_size = int(stats.get("index_size", 0) or 0)
 
         row = {
-            "run_id": args.run_id or "",
+            "run_id": run_id,
+            "dataset_source": dataset_source,
             "user_id": probe.get("user_id", ""),
             "query_id": probe["query_id"],
             "question": probe["question"],
+            "query": probe["question"],
             "question_type": probe.get("question_type", ""),
             "reference_answer": probe.get("reference_answer", ""),
             "retrieved_memory_ids": retrieved_ids,
@@ -340,9 +368,52 @@ def _run_probes(
             "template_answer": template,
             "retrieval_latency_ms": latency_ms,
             "latency_ms": latency_ms,
+            "prompt_sections": prompt_ctx.get("prompt_sections", {}),
+            "prompt_template": prompt_ctx.get("prompt_template", ""),
             "prompt_token_estimate": prompt_ctx.get("prompt_token_estimate", 0),
-            "embedding_backend": args.embedding_backend,
-            "embedding_model": args.embedding_model,
+            "retrieved_count": prompt_ctx.get("retrieved_count", len(retrieved)),
+            "forgotten_memory_ids": prompt_ctx.get("forgotten_memory_ids", []),
+            "excluded_forgotten_memory_ids": prompt_ctx.get(
+                "excluded_forgotten_memory_ids",
+                [],
+            ),
+            "excluded_forgotten_count": prompt_ctx.get(
+                "excluded_forgotten_count",
+                0,
+            ),
+            "candidate_count_before_forgetting": prompt_ctx.get(
+                "candidate_count_before_forgetting",
+                0,
+            ),
+            "candidate_count_after_forgetting": prompt_ctx.get(
+                "candidate_count_after_forgetting",
+                0,
+            ),
+            "exclude_forgotten": prompt_ctx.get(
+                "exclude_forgotten",
+                args.exclude_forgotten,
+            ),
+            "forgetting_threshold": prompt_ctx.get(
+                "forgetting_threshold",
+                args.forgetting_threshold,
+            ),
+            "strength_before_after": prompt_ctx.get("strength_before_after", []),
+            "last_accessed_before_after": prompt_ctx.get(
+                "last_accessed_before_after",
+                [],
+            ),
+            "access_count_before_after": prompt_ctx.get(
+                "access_count_before_after",
+                [],
+            ),
+            "embedding_backend": embedding_backend,
+            "embedding_model": embedding_model,
+            "embedding_dim": embedding_dim,
+            "index_size": index_size,
+            "retention_time_unit_hours": prompt_ctx.get(
+                "retention_time_unit_hours",
+                args.retention_time_unit_hours,
+            ),
             "local_only": True,
             "cloud_api_used": False,
             "llm_called": False,
@@ -381,8 +452,15 @@ def _build_summary(
     csv_path: Path,
     resources_path: Path,
     elapsed_ms: float,
+    dataset_source: str,
 ) -> dict:
+    embedding_backend, embedding_model = _embedding_metadata(args)
+    embedding_dim = _embedding_dim(args)
     metric_rows = [dict(r.get("paper_metrics", {})) for r in rows]
+    forgotten_counts = [len(r.get("forgotten_memory_ids", [])) for r in rows]
+    excluded_counts = [
+        len(r.get("excluded_forgotten_memory_ids", [])) for r in rows
+    ]
     by_type: dict[str, list[dict]] = {}
     for r in rows:
         qt = r.get("question_type", "unknown")
@@ -396,16 +474,27 @@ def _build_summary(
         "run_id": run_id,
         "created_at": datetime.now(timezone.utc).isoformat(),
         "method": "memorybank_phase1_baseline",
-        "dataset_source": args.dataset_dir,
+        "dataset_source": dataset_source,
         "smoke_mode": args.smoke,
         "local_only": True,
         "cloud_api_used": False,
         "llm_called": False,
-        "embedding_backend": args.embedding_backend,
-        "embedding_model": args.embedding_model,
+        "embedding_backend": embedding_backend,
+        "embedding_model": embedding_model,
+        "embedding_dim": embedding_dim,
+        "forgetting_threshold": args.forgetting_threshold,
+        "retention_time_unit_hours": args.retention_time_unit_hours,
         "exclude_forgotten": args.exclude_forgotten,
         "top_k": args.top_k,
         "probe_count": len(rows),
+        "total_forgotten_candidates": sum(forgotten_counts),
+        "total_excluded_forgotten": sum(excluded_counts),
+        "mean_forgotten_candidates_per_query": (
+            statistics.fmean(forgotten_counts) if forgotten_counts else 0.0
+        ),
+        "mean_excluded_forgotten_per_query": (
+            statistics.fmean(excluded_counts) if excluded_counts else 0.0
+        ),
         "paper_metrics": summarize_metric_rows(metric_rows),
         "by_question_type": by_question_type,
         "elapsed_ms": elapsed_ms,
@@ -426,19 +515,27 @@ def _build_resources(
     elapsed_ms: float,
     peak_memory: int,
     memory_bank: Any,
+    dataset_source: str,
 ) -> dict:
     stats = memory_bank.get_stats()
+    embedding_backend, embedding_model = _embedding_metadata(args)
     return {
         "run_id": run_id,
         "created_at": datetime.now(timezone.utc).isoformat(),
+        "dataset_source": dataset_source,
         "local_only": True,
         "cloud_api_used": False,
         "llm_called": False,
         "python_version": platform.python_version(),
         "platform": platform.platform(),
         "processor": platform.processor(),
-        "embedding_backend": args.embedding_backend,
-        "embedding_model": args.embedding_model,
+        "embedding_backend": embedding_backend,
+        "embedding_model": embedding_model,
+        "embedding_dim": _embedding_dim(args),
+        "forgetting_threshold": args.forgetting_threshold,
+        "retention_time_unit_hours": args.retention_time_unit_hours,
+        "exclude_forgotten": args.exclude_forgotten,
+        "top_k": args.top_k,
         "elapsed_ms": elapsed_ms,
         "peak_tracemalloc_bytes": peak_memory,
         "faiss_index_size": int(stats.get("index_size", 0) or 0),

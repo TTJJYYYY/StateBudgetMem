@@ -41,6 +41,23 @@ MEMORYBANK_INSTALL_HINT = (
 )
 
 
+def _estimate_token_count(text: str) -> int:
+    """Cheap deterministic token proxy shared by local MemoryBank outputs."""
+    ascii_words = 0
+    non_ascii_chars = 0
+    current_word = False
+    for char in text:
+        if ord(char) < 128 and char.isalnum():
+            if not current_word:
+                ascii_words += 1
+                current_word = True
+        else:
+            current_word = False
+            if not char.isspace() and ord(char) >= 128:
+                non_ascii_chars += 1
+    return ascii_words + non_ascii_chars
+
+
 # ═══════════════════════════════════════════════════════════════
 # MemoryBank 核心实现（适配统一接口）
 # ═══════════════════════════════════════════════════════════════
@@ -74,6 +91,17 @@ class MemoryBank(MemorySystem):
             ]
             raise ImportError(
                 f"{MEMORYBANK_INSTALL_HINT}. Missing: {', '.join(missing)}"
+            )
+        if embedding_dim <= 0:
+            raise ValueError(f"embedding_dim must be > 0, got {embedding_dim!r}")
+        if not 0.0 <= forgetting_threshold <= 1.0:
+            raise ValueError(
+                "forgetting_threshold must be between 0.0 and 1.0, "
+                f"got {forgetting_threshold!r}"
+            )
+        if decay_interval_hours <= 0:
+            raise ValueError(
+                f"decay_interval_hours must be > 0, got {decay_interval_hours!r}"
             )
         self.embedding_dim = embedding_dim
         self.forgetting_threshold = forgetting_threshold
@@ -342,97 +370,193 @@ class MemoryBank(MemorySystem):
         filters: Optional[Dict] = None,
         memory_types: Optional[List[str]] = None,
         current_time: str | float | int | None = None,
+        exclude_forgotten: bool = False,
     ) -> List[Dict]:
-        """
-        检索记忆，支持过滤
+        """检索记忆，保持原 list[dict] 返回类型。"""
+        result = self.retrieve_with_metadata(
+            query=query,
+            top_k=top_k,
+            filters=filters,
+            memory_types=memory_types,
+            current_time=current_time,
+            exclude_forgotten=exclude_forgotten,
+        )
+        return result["memories"]
 
-        检索流程：
-        1. FAISS 向量相似度检索
-        2. 应用 filters（status / tags / valid_at 等）
-        3. 计算综合分数（语义相似度 × 记忆强度 × 时间衰减）
-        """
+    def retrieve_with_metadata(
+        self,
+        query: str,
+        top_k: int = 5,
+        filters: Optional[Dict] = None,
+        memory_types: Optional[List[str]] = None,
+        current_time: str | float | int | None = None,
+        exclude_forgotten: bool = False,
+    ) -> Dict[str, Any]:
+        """Retrieve memories and expose forgetting/filtering metadata."""
+        if top_k <= 0:
+            return self._empty_retrieval_metadata(exclude_forgotten)
+
         self._ensure_index()
         if self.index.ntotal == 0:
-            return []
+            return self._empty_retrieval_metadata(exclude_forgotten)
 
-        # 编码查询
+        now = self._parse_time(current_time)
+
         query_emb = self._get_embedding(query)
 
-        # FAISS 检索
-        search_k = min(top_k * 3, self.index.ntotal)
-        distances, indices = self.index.search(query_emb.reshape(1, -1), search_k)
+        allowed_memory_types = set(memory_types or [])
+        retention_time_unit_hours = self.decay_interval_sec / 3600.0
+        search_k = min(max(top_k * 3, top_k), self.index.ntotal)
+        candidates: List[Dict[str, Any]] = []
+        ranking_pool: List[Dict[str, Any]] = []
+        forgotten_memory_ids: List[str] = []
+        excluded_ids: List[str] = []
+        candidate_count_before_forgetting = 0
+        candidate_count_after_forgetting = 0
 
-        now = self._parse_time(current_time) if current_time is not None else time.time()
-        candidates = []
+        while True:
+            distances, indices = self.index.search(query_emb.reshape(1, -1), search_k)
 
-        for dist, idx in zip(distances[0], indices[0]):
-            mid = self.faiss_id_to_mid.get(int(idx))
-            if not mid:
+            raw_candidates: List[Tuple[MemoryPiece, float]] = []
+            seen_ids: set[str] = set()
+            for dist, idx in zip(distances[0], indices[0]):
+                mid = self.faiss_id_to_mid.get(int(idx))
+                if not mid or mid in seen_ids:
+                    continue
+                mem = self.memories_by_id.get(mid)
+                if not mem:
+                    continue
+                if allowed_memory_types and mem.memory_type.value not in allowed_memory_types:
+                    continue
+                raw_candidates.append((mem, float(dist)))
+                seen_ids.add(mid)
+
+            if filters:
+                filtered = filter_memories([mem for mem, _ in raw_candidates], filters)
+                allowed_ids = {mem.memory_id for mem in filtered}
+                raw_candidates = [
+                    (mem, dist)
+                    for mem, dist in raw_candidates
+                    if mem.memory_id in allowed_ids
+                ]
+
+            candidates = [
+                self._retrieval_candidate_row(
+                    mem=mem,
+                    semantic_score=semantic_score,
+                    query=query,
+                    now=now,
+                    retention_time_unit_hours=retention_time_unit_hours,
+                )
+                for mem, semantic_score in raw_candidates
+            ]
+
+            forgotten_memory_ids = [
+                row["memory_id"] for row in candidates if row["is_forgotten"]
+            ]
+            candidate_count_before_forgetting = len(candidates)
+            if exclude_forgotten:
+                ranking_pool = [row for row in candidates if not row["is_forgotten"]]
+                excluded_ids = [
+                    row["memory_id"] for row in candidates if row["is_forgotten"]
+                ]
+            else:
+                ranking_pool = list(candidates)
+                excluded_ids = []
+            candidate_count_after_forgetting = len(ranking_pool)
+
+            if len(ranking_pool) >= top_k or search_k == self.index.ntotal:
+                break
+            search_k = min(self.index.ntotal, search_k * 2)
+
+        ranking_pool.sort(key=lambda x: x["composite_score"], reverse=True)
+        selected = ranking_pool[:top_k]
+
+        for rank, item in enumerate(selected, start=1):
+            item["retrieval_rank"] = rank
+            item["retrieval_score"] = item["composite_score"]
+            item["score"] = item["composite_score"]
+
+        for item in selected:
+            mem = self.memories_by_id.get(item["memory_id"])
+            if mem is None:
                 continue
-            mem = self.memories_by_id.get(mid)
-            if not mem:
-                continue
-            if memory_types and mem.memory_type.value not in set(memory_types):
-                continue
-
-            # 计算综合分数
-            age_hours = (now - mem.timestamp) / 3600.0
-            time_decay = math.exp(-age_hours / 168)  # 一周衰减
-            semantic_score = float(dist)
-            before_strength = mem.strength
-            before_last_accessed = mem.last_accessed
-            strength_factor = 1 + mem.strength * 0.3
-            composite_score = semantic_score * strength_factor * time_decay
-
-            # Spacing Effect
             mem.strength += 1
             mem.last_accessed = now
             mem.access_count += 1
             self.access_count += 1
-            after_strength = mem.strength
-            after_last_accessed = mem.last_accessed
+            item["after_strength"] = mem.strength
+            item["after_last_accessed"] = mem.last_accessed
+            item["after_access_count"] = mem.access_count
+            item["strength"] = mem.strength
 
-            candidates.append({
-                "memory_id": mem.memory_id,
-                "content": mem.content,
-                "memory_type": mem.memory_type.value,
-                "semantic_score": round(semantic_score, 4),
-                "composite_score": round(composite_score, 4),
-                "time_decay": round(time_decay, 6),
-                "strength_factor": round(strength_factor, 4),
-                "strength": mem.strength,
-                "before_strength": before_strength,
-                "after_strength": after_strength,
-                "before_last_accessed": before_last_accessed,
-                "after_last_accessed": after_last_accessed,
-                "query": query,
-                "recall_timestamp": now,
-                "status": mem.status.value,
-                "tags": mem.tags,
-                "timestamp": mem.timestamp,
-                "age_hours": round(age_hours, 1),
-            })
+        return {
+            "memories": selected,
+            "forgotten_memory_ids": forgotten_memory_ids,
+            "excluded_forgotten_memory_ids": excluded_ids,
+            "candidate_count_before_forgetting": candidate_count_before_forgetting,
+            "candidate_count_after_forgetting": candidate_count_after_forgetting,
+            "exclude_forgotten": exclude_forgotten,
+            "forgetting_threshold": self.forgetting_threshold,
+            "retention_time_unit_hours": retention_time_unit_hours,
+        }
 
-        # 按综合分数排序
-        candidates.sort(key=lambda x: x["composite_score"], reverse=True)
-        candidates = candidates[:top_k]
-        for rank, item in enumerate(candidates, start=1):
-            item["retrieval_rank"] = rank
-            item["retrieval_score"] = item["composite_score"]
+    def _retrieval_candidate_row(
+        self,
+        mem: MemoryPiece,
+        semantic_score: float,
+        query: str,
+        now: float,
+        retention_time_unit_hours: float,
+    ) -> Dict[str, Any]:
+        age_hours = max(0.0, (now - mem.timestamp) / 3600.0)
+        time_decay = math.exp(-age_hours / 168)
+        strength_factor = 1 + mem.strength * 0.3
+        composite_score = semantic_score * strength_factor * time_decay
+        elapsed_seconds = max(0.0, now - mem.last_accessed)
+        elapsed_since_access_hours = elapsed_seconds / 3600.0
+        elapsed_time_units = elapsed_seconds / self.decay_interval_sec
+        retention = (
+            math.exp(-elapsed_time_units / mem.strength)
+            if mem.strength > 0
+            else 0.0
+        )
+        return {
+            "memory_id": mem.memory_id,
+            "content": mem.content,
+            "memory_type": mem.memory_type.value,
+            "semantic_score": round(semantic_score, 4),
+            "composite_score": round(composite_score, 4),
+            "time_decay": round(time_decay, 6),
+            "strength_factor": round(strength_factor, 4),
+            "retention": retention,
+            "elapsed_hours": elapsed_since_access_hours,
+            "elapsed_time_units": elapsed_time_units,
+            "retention_time_unit_hours": retention_time_unit_hours,
+            "is_forgotten": retention < self.forgetting_threshold,
+            "forgetting_threshold": self.forgetting_threshold,
+            "before_strength": mem.strength,
+            "before_last_accessed": mem.last_accessed,
+            "before_access_count": mem.access_count,
+            "query": query,
+            "recall_timestamp": now,
+            "status": mem.status.value,
+            "tags": mem.tags,
+            "timestamp": mem.timestamp,
+            "age_hours": round(age_hours, 1),
+        }
 
-        # 应用 filters
-        if filters:
-            # 将 candidates 转回 MemoryPiece 进行过滤
-            pieces = []
-            for c in candidates:
-                mp = self.memories_by_id.get(c["memory_id"])
-                if mp:
-                    pieces.append(mp)
-            filtered = filter_memories(pieces, filters)
-            filtered_ids = {m.memory_id for m in filtered}
-            candidates = [c for c in candidates if c["memory_id"] in filtered_ids]
-
-        return candidates
+    def _empty_retrieval_metadata(self, exclude_forgotten: bool) -> Dict[str, Any]:
+        return {
+            "memories": [],
+            "forgotten_memory_ids": [],
+            "excluded_forgotten_memory_ids": [],
+            "candidate_count_before_forgetting": 0,
+            "candidate_count_after_forgetting": 0,
+            "exclude_forgotten": exclude_forgotten,
+            "forgetting_threshold": self.forgetting_threshold,
+            "retention_time_unit_hours": self.decay_interval_sec / 3600.0,
+        }
 
     # ── 核心接口：update ──
 
@@ -601,10 +725,17 @@ class MemoryBank(MemorySystem):
 
     def _forgetting_events(self, now: float) -> List[Dict[str, Any]]:
         events = []
+        retention_time_unit_hours = self.decay_interval_sec / 3600.0
         for mem in self.memories:
-            elapsed_hours = (now - mem.last_accessed) / 3600.0
+            elapsed_seconds = max(0.0, now - mem.last_accessed)
+            elapsed_hours = elapsed_seconds / 3600.0
+            elapsed_time_units = elapsed_seconds / self.decay_interval_sec
             strength = mem.strength
-            retention = math.exp(-elapsed_hours / strength) if strength > 0 else 0.0
+            retention = (
+                math.exp(-elapsed_time_units / strength)
+                if strength > 0
+                else 0.0
+            )
             events.append(
                 {
                     "memory_id": mem.memory_id,
@@ -612,6 +743,8 @@ class MemoryBank(MemorySystem):
                     "strength": strength,
                     "last_accessed": mem.last_accessed,
                     "elapsed_hours": elapsed_hours,
+                    "elapsed_time_units": elapsed_time_units,
+                    "retention_time_unit_hours": retention_time_unit_hours,
                     "retention": retention,
                     "is_forgotten": retention < self.forgetting_threshold,
                     "threshold": self.forgetting_threshold,
@@ -619,10 +752,22 @@ class MemoryBank(MemorySystem):
             )
         return events
 
-    def build_augmented_prompt(self, query: str, current_time: Optional[str] = None,
-                               top_k: int = 5, include_portrait: bool = True) -> Dict[str, Any]:
+    def build_augmented_prompt(
+        self,
+        query: str,
+        current_time: str | float | int | None = None,
+        top_k: int = 5,
+        include_portrait: bool = True,
+        exclude_forgotten: bool = False,
+    ) -> Dict[str, Any]:
         """Build the MemoryBank-style memory-augmented prompt."""
-        memories = self.retrieve(query, top_k=top_k, current_time=current_time)
+        retrieval_result = self.retrieve_with_metadata(
+            query=query,
+            top_k=top_k,
+            current_time=current_time,
+            exclude_forgotten=exclude_forgotten,
+        )
+        memories = retrieval_result["memories"]
         memory_text = "\n".join([
             f"[{m['memory_type']}] {m['content']}"
             for m in memories
@@ -674,6 +819,49 @@ class MemoryBank(MemorySystem):
             "retrieved_count": len(memories),
             "retrieved_memory_ids": [m.get("memory_id") for m in memories],
             "retrieved_memories": memories,
+            "prompt_token_estimate": _estimate_token_count(prompt),
+            "forgotten_memory_ids": retrieval_result["forgotten_memory_ids"],
+            "excluded_forgotten_memory_ids": retrieval_result[
+                "excluded_forgotten_memory_ids"
+            ],
+            "excluded_forgotten_count": len(
+                retrieval_result["excluded_forgotten_memory_ids"]
+            ),
+            "candidate_count_before_forgetting": retrieval_result[
+                "candidate_count_before_forgetting"
+            ],
+            "candidate_count_after_forgetting": retrieval_result[
+                "candidate_count_after_forgetting"
+            ],
+            "exclude_forgotten": retrieval_result["exclude_forgotten"],
+            "forgetting_threshold": retrieval_result["forgetting_threshold"],
+            "retention_time_unit_hours": retrieval_result[
+                "retention_time_unit_hours"
+            ],
+            "strength_before_after": [
+                {
+                    "memory_id": m.get("memory_id"),
+                    "before": m.get("before_strength"),
+                    "after": m.get("after_strength"),
+                }
+                for m in memories
+            ],
+            "last_accessed_before_after": [
+                {
+                    "memory_id": m.get("memory_id"),
+                    "before": m.get("before_last_accessed"),
+                    "after": m.get("after_last_accessed"),
+                }
+                for m in memories
+            ],
+            "access_count_before_after": [
+                {
+                    "memory_id": m.get("memory_id"),
+                    "before": m.get("before_access_count"),
+                    "after": m.get("after_access_count"),
+                }
+                for m in memories
+            ],
         }
 
 

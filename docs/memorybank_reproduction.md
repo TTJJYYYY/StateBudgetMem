@@ -11,19 +11,30 @@ MemoryBank paper mechanism:
 - Each memory starts with memory strength `S = 1`.
 - When a memory is recalled, `S += 1`.
 - Recall also resets or updates the last accessed time.
-- Retention follows an Ebbinghaus-style curve: `R = exp(-t / S)`.
+- Retention follows an Ebbinghaus-style curve: `R = exp(-t / S)`, where
+  `t` is measured in configurable retention time units.
 - When retention is below a threshold, the memory may be treated as forgotten.
 
 Current project mapping:
 
 - `MemoryPiece.strength` stores `S` and starts at `1.0`.
-- `MemoryBank.retrieve()` applies the spacing effect by increasing
-  `strength` and updating `last_accessed`.
+- Retrieval computes `R = exp(-t / S)` for each candidate after filters and
+  before optional forgetting exclusion. By default,
+  `decay_interval_hours=24.0`, so one `t` unit is one day.
+- `MemoryBank.retrieve()` applies the spacing effect only to memories that
+  survive filtering, survive optional forgetting exclusion, and enter final
+  Top-K.
 - `MemoryBank.update_forgetting()` keeps the existing legacy return shape.
 - `MemoryBank.update_forgetting_with_log()` runs the same forgetting update and
-  returns machine-readable retention events.
+  returns machine-readable retention events. Its `strength *= 0.5` update for
+  forgotten memories is a legacy simplification in this project, not an
+  original-paper requirement.
 - `MemoryBank.forgetting_log()` computes retention events without mutating the
   memory bank.
+
+The implementation has three parts: storage (`dialog`, `summary`, and portrait
+state), retrieval (FAISS candidate search plus MemoryBank scoring), and updating
+(recall reinforcement plus the simplified forgetting update).
 
 ## Reproduced Parts
 
@@ -33,7 +44,10 @@ Current project mapping:
 - Strength reinforcement after recall.
 - `last_accessed` update after recall.
 - Ebbinghaus-style retention calculation.
+- Configurable retention time unit through `decay_interval_hours`; outputs
+  record `retention_time_unit_hours`.
 - Forgotten-memory identification using a configurable threshold.
+- Optional hard exclusion with `--exclude-forgotten`.
 - JSONL/JSON logs for plotting and later evaluation.
 
 ## Approximate Parts
@@ -69,6 +83,33 @@ The method returns both the rendered `prompt_template` and structured fields:
 - `prompt_sections`: the four prompt sections in machine-readable form.
 - `retrieved_memory_ids`: IDs used in the prompt.
 - `retrieved_memories`: raw retrieval rows for retrieval-only evaluation.
+- `prompt_token_estimate`: deterministic token proxy for the full prompt.
+- `forgotten_memory_ids`: candidates below threshold after filters and before
+  optional exclusion.
+- `excluded_forgotten_memory_ids`: candidates removed because
+  `exclude_forgotten=True`.
+- `strength_before_after`, `last_accessed_before_after`, and
+  `access_count_before_after`: recall reinforcement deltas for final Top-K.
+
+Default retrieval uses `exclude_forgotten=False`: retention and `is_forgotten`
+are recorded, but forgotten candidates can still rank and enter the prompt for
+baseline compatibility. With `--exclude-forgotten`, candidates whose retention
+is below the threshold do not enter final Top-K, do not enter the prompt, and
+are not reinforced by that query. This hard exclusion is an optional
+on-device/ablation strategy, not the only behavior specified by the original
+MemoryBank paper.
+
+Retention uses:
+
+```text
+elapsed_seconds = max(0, now - last_accessed)
+elapsed_time_units = elapsed_seconds / decay_interval_sec
+R = exp(-elapsed_time_units / S)
+```
+
+`elapsed_hours` is still recorded for readability, while
+`retention_time_unit_hours` records the configured time unit. The default is
+24 hours.
 
 For the first reproduction stage, evaluate retrieval quality and prompt
 composition without invoking a cloud LLM. For the second stage, inject a local
@@ -86,6 +127,15 @@ Run the formal local/on-device reproduction script:
 
 ```bash
 python tools/memorybank/run_ondevice_reproduction.py
+```
+
+PowerShell one-line examples:
+
+```bash
+python tools/memorybank/run_ondevice_reproduction.py --run-id a1_default
+python tools/memorybank/run_ondevice_reproduction.py --run-id a1_exclude --exclude-forgotten
+python tools/memorybank/run_phase1_baseline.py --smoke --embedding-backend hash --run-id phase1_default
+python tools/memorybank/run_phase1_baseline.py --smoke --embedding-backend hash --exclude-forgotten --run-id phase1_exclude
 ```
 
 It writes:
@@ -177,7 +227,9 @@ memorybank_forgetting_summary.json
 - `strength`: strength used to compute retention.
 - `last_accessed`: last access timestamp.
 - `elapsed_hours`: hours since last access.
-- `retention`: `exp(-elapsed_hours / strength)`.
+- `elapsed_time_units`: elapsed time divided by the configured retention unit.
+- `retention_time_unit_hours`: retention time unit in hours; default `24.0`.
+- `retention`: `exp(-elapsed_time_units / strength)`.
 - `is_forgotten`: whether retention is below the threshold.
 - `threshold`: forgetting threshold.
 
@@ -199,6 +251,21 @@ memorybank_forgetting_summary.json
 - `prompt_template`: rendered MemoryBank-style prompt.
 - `latency_ms`: retrieval plus prompt-construction latency.
 - `prompt_token_estimate`: deterministic local token proxy.
+- `forgotten_memory_ids`: filtered candidates whose retention was below the
+  threshold before optional exclusion.
+- retrieved memory rows include `elapsed_hours`, `elapsed_time_units`, and
+  `retention_time_unit_hours` for auditing the retention calculation.
+- `excluded_forgotten_memory_ids`: forgotten candidates actually removed when
+  hard exclusion is enabled.
+- `candidate_count_before_forgetting` / `candidate_count_after_forgetting`:
+  candidate counts around optional hard exclusion.
+- `exclude_forgotten`: whether hard exclusion was enabled.
+- `strength_before_after`, `last_accessed_before_after`, and
+  `access_count_before_after`: mutation audit for final retrieved memories.
+- `embedding_backend`: `hash` for smoke/CI or `sentence-transformer` for local
+  semantic retrieval.
+- `embedding_model`: `deterministic_hash_embedding` for hash mode; otherwise
+  the sentence-transformer model name or local path.
 - `index_size`: number of FAISS-indexed memories.
 
 `results/memorybank/ondevice/summaries/*.json` records query count, mean
@@ -207,7 +274,11 @@ report.
 
 `results/memorybank/ondevice/resources/*.json` records local-only execution,
 hardware/runtime information, peak traced memory, index size, memory count, and
-output file sizes.
+output file sizes. Hash embedding is deterministic, does not access the
+network, and is recorded as `deterministic_hash_embedding`. Sentence-transformer
+mode is the local semantic retrieval path; the default is `all-MiniLM-L6-v2`,
+first use may download model files, and offline runs require a cached model or
+local model directory. It is not a cloud LLM API call.
 
 ## Metrics
 
@@ -238,10 +309,10 @@ On-device metrics:
 - `stale_retrieval_case_rate`: budget-sweep rate of cases where at least one
   stale memory is selected.
 
-These paper metrics are first-stage proxies because the formal dataset and
-human/LLM judge labels are not ready yet. After TODO2 adds a MemoryBank-style
-dataset, the same metric functions can consume dataset-level labels instead of
-the built-in keyword spec.
+These paper metrics are first-stage proxies because template answers and
+keyword checks are not the original paper's human evaluation. After TODO2 adds a
+MemoryBank-style dataset, the same metric functions can consume dataset-level
+labels instead of the built-in keyword spec.
 
 ## Tests
 

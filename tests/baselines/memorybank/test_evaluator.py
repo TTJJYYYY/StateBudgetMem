@@ -60,7 +60,11 @@ class TestSmokeRunner:
             assert r.returncode == 0, r.stderr
             raw = list(Path(tmpdir, "raw").glob("*.jsonl"))
             assert len(raw) == 1
-            lines = [json.loads(l) for l in raw[0].read_text().strip().split("\n") if l]
+            lines = [
+                json.loads(l)
+                for l in raw[0].read_text(encoding="utf-8").strip().split("\n")
+                if l
+            ]
             assert len(lines) == 5
             for row in lines:
                 assert "paper_metrics" in row
@@ -75,7 +79,7 @@ class TestSmokeRunner:
             )
             sf = list(Path(tmpdir, "summaries").glob("*.json"))
             assert len(sf) == 1
-            s = json.loads(sf[0].read_text())
+            s = json.loads(sf[0].read_text(encoding="utf-8"))
             assert s["probe_count"] == 5
 
     def test_smoke_produces_resources(self):
@@ -87,7 +91,7 @@ class TestSmokeRunner:
             )
             rf = list(Path(tmpdir, "resources").glob("*.json"))
             assert len(rf) == 1
-            r = json.loads(rf[0].read_text())
+            r = json.loads(rf[0].read_text(encoding="utf-8"))
             assert r["cloud_api_used"] is False
             assert r["llm_called"] is False
 
@@ -100,7 +104,7 @@ class TestSmokeRunner:
             )
             cf = list(Path(tmpdir, "summaries").glob("*.csv"))
             assert len(cf) == 1
-            lines = cf[0].read_text().strip().split("\n")
+            lines = cf[0].read_text(encoding="utf-8").strip().split("\n")
             assert len(lines) == 6
 
     def test_hash_embedding_no_cloud(self):
@@ -111,6 +115,6 @@ class TestSmokeRunner:
                 capture_output=True, cwd=ROOT,
             )
             rf = list(Path(tmpdir, "resources").glob("*.json"))
-            r = json.loads(rf[0].read_text())
+            r = json.loads(rf[0].read_text(encoding="utf-8"))
             assert r["embedding_backend"] == "hash"
             assert r["cloud_api_used"] is False
