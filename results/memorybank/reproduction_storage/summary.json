@@ -3,6 +3,7 @@
     "user_id": "user_001",
     "summary_mode": "fixture",
     "portrait_mode": "fixture",
+    "source": "manual_fixture",
     "user_memory_ids": {
       "event_summary_id": "user_001_global_event_summary",
       "portrait_id": "user_001_global_user_portrait"
@@ -58,6 +59,7 @@
     "user_id": "user_002",
     "summary_mode": "fixture",
     "portrait_mode": "fixture",
+    "source": "manual_fixture",
     "user_memory_ids": {
       "event_summary_id": "user_002_global_event_summary",
       "portrait_id": "user_002_global_user_portrait"
@@ -113,6 +115,7 @@
     "user_id": "user_003",
     "summary_mode": "fixture",
     "portrait_mode": "fixture",
+    "source": "manual_fixture",
     "user_memory_ids": {
       "event_summary_id": "user_003_global_event_summary",
       "portrait_id": "user_003_global_user_portrait"
@@ -168,6 +171,7 @@
     "user_id": "user_004",
     "summary_mode": "fixture",
     "portrait_mode": "fixture",
+    "source": "manual_fixture",
     "user_memory_ids": {
       "event_summary_id": "user_004_global_event_summary",
       "portrait_id": "user_004_global_user_portrait"
@@ -223,6 +227,7 @@
     "user_id": "user_005",
     "summary_mode": "fixture",
     "portrait_mode": "fixture",
+    "source": "manual_fixture",
     "user_memory_ids": {
       "event_summary_id": "user_005_global_event_summary",
       "portrait_id": "user_005_global_user_portrait"

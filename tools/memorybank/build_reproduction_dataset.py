@@ -39,6 +39,7 @@ def build_summary_dataset() -> dict[str, object]:
             "user_id": user_id,
             "summary_mode": "fixture",
             "portrait_mode": "fixture",
+            "source": "manual_fixture",
             "user_memory_ids": {
                 "event_summary_id": f"{user_id}_global_event_summary",
                 "portrait_id": f"{user_id}_global_user_portrait",
