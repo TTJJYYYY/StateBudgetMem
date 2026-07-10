@@ -26,8 +26,8 @@ data/
     │   ├── user_002.json
     │   ├── user_003.json
     │   ├── user_004.json
-    │   ├── user_005.json
-    │   └── probing_questions.jsonl
+    │   └── user_005.json
+    ├── probing_questions.jsonl
     └── README.md
 ```
 
