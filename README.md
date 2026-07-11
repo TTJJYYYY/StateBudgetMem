@@ -124,6 +124,12 @@ python -m pip install -e ".[test]"
 pytest -q
 ```
 
+On Windows, if the default pytest temp directory is not accessible, use:
+
+```powershell
+python -m pytest -q --basetemp .tmp\pytest -p no:cacheprovider
+```
+
 Optional components:
 
 ```bash
@@ -131,6 +137,38 @@ python -m pip install -e ".[memorybank]"  # FAISS + embeddings
 python -m pip install -e ".[llm]"         # OpenAI-compatible APIs
 python -m pip install -e ".[demo]"        # MemoryBank + Gradio
 ```
+
+## On-device MemoryBank core baseline
+
+Python 3.11-3.13 is supported; Python 3.11 or 3.12 is recommended for the
+broadest binary-wheel compatibility. The baseline uses local files, a local
+embedding model, and FAISS. It does not call a cloud API or cloud database.
+
+```powershell
+python -m venv .venv
+.venv\Scripts\python.exe -m pip install -U pip
+.venv\Scripts\python.exe -m pip install -e ".[memorybank,test]"
+
+# deterministic smoke run
+.venv\Scripts\python.exe tools\memorybank\run_ondevice_memorybank_baseline.py `
+  --output-dir results\ondevice_memorybank\smoke `
+  --smoke --embedding-backend hash --seed 42
+
+# formal local semantic run (download/cache the model once before offline use)
+.venv\Scripts\python.exe tools\memorybank\run_ondevice_memorybank_baseline.py `
+  --output-dir results\ondevice_memorybank\baseline_run `
+  --embedding-backend sentence-transformers `
+  --memory-counts 100 500 1000 2000 --top-k 1 3 5 --repeat 3 `
+  --seed 42 --local-only --detailed-logs `
+  --enable-forgetting --enable-reinforcement
+```
+
+The runner writes separate local memory, metadata, embedding, and FAISS index
+files; retrieval/reinforcement/forgetting JSONL logs; metrics and resource JSON;
+predictions CSV; environment metadata; and seven PNG figures. The current scope
+is a **MemoryBank core memory-system baseline**, not a complete conversational
+agent: memory extraction, summaries, profile evolution, and answer generation
+do not use a local LLM in this phase.
 
 ## Demo Commands
 

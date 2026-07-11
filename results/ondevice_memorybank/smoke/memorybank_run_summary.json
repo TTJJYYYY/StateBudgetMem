@@ -1,0 +1,75 @@
+{
+  "cloud_api_calls": 0,
+  "conversational_agent_baseline": false,
+  "elapsed_seconds": 0.041556199998012744,
+  "embedding_backend": "hash",
+  "embedding_model": "deterministic_hash_embedding",
+  "local_only": true,
+  "memory_counts": [
+    100
+  ],
+  "memory_system_baseline": true,
+  "metrics": {
+    "by_memory_count_and_top_k": [
+      {
+        "mean_prompt_token_estimate": 9.25,
+        "mean_retrieval_latency_ms": 0.10377499999999999,
+        "memory_count": 100,
+        "p50_retrieval_latency_ms": 0.05935,
+        "p95_retrieval_latency_ms": 0.22674999999999992,
+        "queries": 4,
+        "recall_at_k": 0.25,
+        "stale_retrieval_rate": 0.0,
+        "top_k": 1,
+        "valid_recall_at_k": 0.25
+      },
+      {
+        "mean_prompt_token_estimate": 25.5,
+        "mean_retrieval_latency_ms": 0.061625,
+        "memory_count": 100,
+        "p50_retrieval_latency_ms": 0.06075,
+        "p95_retrieval_latency_ms": 0.067555,
+        "queries": 4,
+        "recall_at_k": 0.75,
+        "stale_retrieval_rate": 0.0,
+        "top_k": 3,
+        "valid_recall_at_k": 0.75
+      }
+    ],
+    "metric_definitions": {
+      "prompt_token_estimate": "whitespace words plus non-ASCII characters; not a model tokenizer",
+      "recall_at_k": "fraction of probes whose controlled relevant memory is in Top-K",
+      "stale_retrieval_rate": "stale controlled memories divided by retrieved memories",
+      "valid_recall_at_k": "fraction whose current valid memory is in Top-K"
+    }
+  },
+  "network_calls": 0,
+  "paper_mechanism": "R=exp(-t/S), S starts at 1, recalled memories use S+=1 and reset last_accessed",
+  "project_extensions": "Threshold-based forgotten candidate flagging is evaluated; strength*=0.5 is not used by this runner.",
+  "repeat": 1,
+  "resources": {
+    "by_memory_count": [
+      {
+        "baseline_rss_bytes": 64495616.0,
+        "embedding_file_bytes": 153728.0,
+        "embedding_ms": 6.2278,
+        "faiss_index_file_bytes": 153645.0,
+        "index_build_ms": 0.0,
+        "index_build_peak_rss_bytes": 64802816.0,
+        "index_loaded_rss_bytes": 65155072.0,
+        "memory_count": 100,
+        "memory_file_bytes": 12049.0,
+        "memory_write_ms": 6.2278,
+        "metadata_file_bytes": 50086.0,
+        "storage_total_bytes": 369508.0
+      }
+    ],
+    "log_file_bytes": 275190
+  },
+  "seed": 42,
+  "status": "success",
+  "top_k": [
+    1,
+    3
+  ]
+}

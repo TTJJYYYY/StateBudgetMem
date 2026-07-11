@@ -1,0 +1,154 @@
+{
+  "by_memory_count_and_top_k": [
+    {
+      "mean_prompt_token_estimate": 8.25,
+      "mean_retrieval_latency_ms": 18.147716666666668,
+      "memory_count": 100,
+      "p50_retrieval_latency_ms": 17.8056,
+      "p95_retrieval_latency_ms": 19.77853,
+      "queries": 12,
+      "recall_at_k": 1.0,
+      "stale_retrieval_rate": 0.0,
+      "top_k": 1,
+      "valid_recall_at_k": 1.0
+    },
+    {
+      "mean_prompt_token_estimate": 24.25,
+      "mean_retrieval_latency_ms": 18.381416666666667,
+      "memory_count": 100,
+      "p50_retrieval_latency_ms": 18.8613,
+      "p95_retrieval_latency_ms": 20.19863,
+      "queries": 12,
+      "recall_at_k": 1.0,
+      "stale_retrieval_rate": 0.0,
+      "top_k": 3,
+      "valid_recall_at_k": 1.0
+    },
+    {
+      "mean_prompt_token_estimate": 44.75,
+      "mean_retrieval_latency_ms": 18.280175,
+      "memory_count": 100,
+      "p50_retrieval_latency_ms": 18.231949999999998,
+      "p95_retrieval_latency_ms": 20.546484999999997,
+      "queries": 12,
+      "recall_at_k": 1.0,
+      "stale_retrieval_rate": 0.0,
+      "top_k": 5,
+      "valid_recall_at_k": 1.0
+    },
+    {
+      "mean_prompt_token_estimate": 8.25,
+      "mean_retrieval_latency_ms": 17.728375,
+      "memory_count": 500,
+      "p50_retrieval_latency_ms": 17.45895,
+      "p95_retrieval_latency_ms": 19.97256,
+      "queries": 12,
+      "recall_at_k": 1.0,
+      "stale_retrieval_rate": 0.0,
+      "top_k": 1,
+      "valid_recall_at_k": 1.0
+    },
+    {
+      "mean_prompt_token_estimate": 24.25,
+      "mean_retrieval_latency_ms": 18.589016666666666,
+      "memory_count": 500,
+      "p50_retrieval_latency_ms": 18.33955,
+      "p95_retrieval_latency_ms": 21.971995,
+      "queries": 12,
+      "recall_at_k": 1.0,
+      "stale_retrieval_rate": 0.0,
+      "top_k": 3,
+      "valid_recall_at_k": 1.0
+    },
+    {
+      "mean_prompt_token_estimate": 44.75,
+      "mean_retrieval_latency_ms": 18.069824999999998,
+      "memory_count": 500,
+      "p50_retrieval_latency_ms": 17.99225,
+      "p95_retrieval_latency_ms": 19.605240000000002,
+      "queries": 12,
+      "recall_at_k": 1.0,
+      "stale_retrieval_rate": 0.0,
+      "top_k": 5,
+      "valid_recall_at_k": 1.0
+    },
+    {
+      "mean_prompt_token_estimate": 8.25,
+      "mean_retrieval_latency_ms": 18.164875,
+      "memory_count": 1000,
+      "p50_retrieval_latency_ms": 18.1622,
+      "p95_retrieval_latency_ms": 20.68243,
+      "queries": 12,
+      "recall_at_k": 1.0,
+      "stale_retrieval_rate": 0.0,
+      "top_k": 1,
+      "valid_recall_at_k": 1.0
+    },
+    {
+      "mean_prompt_token_estimate": 24.25,
+      "mean_retrieval_latency_ms": 17.98120833333333,
+      "memory_count": 1000,
+      "p50_retrieval_latency_ms": 18.26585,
+      "p95_retrieval_latency_ms": 20.838044999999997,
+      "queries": 12,
+      "recall_at_k": 1.0,
+      "stale_retrieval_rate": 0.0,
+      "top_k": 3,
+      "valid_recall_at_k": 1.0
+    },
+    {
+      "mean_prompt_token_estimate": 44.75,
+      "mean_retrieval_latency_ms": 18.066783333333333,
+      "memory_count": 1000,
+      "p50_retrieval_latency_ms": 18.12835,
+      "p95_retrieval_latency_ms": 20.367964999999998,
+      "queries": 12,
+      "recall_at_k": 1.0,
+      "stale_retrieval_rate": 0.0,
+      "top_k": 5,
+      "valid_recall_at_k": 1.0
+    },
+    {
+      "mean_prompt_token_estimate": 8.25,
+      "mean_retrieval_latency_ms": 18.429391666666668,
+      "memory_count": 2000,
+      "p50_retrieval_latency_ms": 18.1288,
+      "p95_retrieval_latency_ms": 20.639815,
+      "queries": 12,
+      "recall_at_k": 1.0,
+      "stale_retrieval_rate": 0.0,
+      "top_k": 1,
+      "valid_recall_at_k": 1.0
+    },
+    {
+      "mean_prompt_token_estimate": 24.25,
+      "mean_retrieval_latency_ms": 17.483266666666665,
+      "memory_count": 2000,
+      "p50_retrieval_latency_ms": 17.3997,
+      "p95_retrieval_latency_ms": 19.94152,
+      "queries": 12,
+      "recall_at_k": 1.0,
+      "stale_retrieval_rate": 0.0,
+      "top_k": 3,
+      "valid_recall_at_k": 1.0
+    },
+    {
+      "mean_prompt_token_estimate": 44.75,
+      "mean_retrieval_latency_ms": 17.492391666666666,
+      "memory_count": 2000,
+      "p50_retrieval_latency_ms": 16.93275,
+      "p95_retrieval_latency_ms": 20.065485,
+      "queries": 12,
+      "recall_at_k": 1.0,
+      "stale_retrieval_rate": 0.0,
+      "top_k": 5,
+      "valid_recall_at_k": 1.0
+    }
+  ],
+  "metric_definitions": {
+    "prompt_token_estimate": "whitespace words plus non-ASCII characters; not a model tokenizer",
+    "recall_at_k": "fraction of probes whose controlled relevant memory is in Top-K",
+    "stale_retrieval_rate": "stale controlled memories divided by retrieved memories",
+    "valid_recall_at_k": "fraction whose current valid memory is in Top-K"
+  }
+}

@@ -18,6 +18,8 @@ llm = [
 memorybank = [
     "numpy>=1.26",
     "faiss-cpu>=1.8",
+    "matplotlib>=3.9",
+    "psutil>=6",
     "scikit-learn>=1.4",
     "sentence-transformers>=3",
 ]

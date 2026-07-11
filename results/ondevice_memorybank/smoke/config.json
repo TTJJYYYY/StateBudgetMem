@@ -1,0 +1,23 @@
+{
+  "current_time": "2026-07-11 12:00",
+  "detailed_logs": true,
+  "embedding_backend": "hash",
+  "embedding_dim": 384,
+  "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
+  "enable_forgetting": true,
+  "enable_reinforcement": true,
+  "forgetting_threshold": 0.3,
+  "local_only": true,
+  "memory_counts": [
+    100
+  ],
+  "output_dir": "D:\\projects\\memorybankproject\\StateBudgetMem\\results\\ondevice_memorybank\\smoke",
+  "repeat": 1,
+  "retention_time_unit_hours": 24.0,
+  "seed": 42,
+  "smoke": true,
+  "top_k": [
+    1,
+    3
+  ]
+}
