@@ -1,0 +1,21 @@
+{
+  "cloud_api_calls": 0,
+  "cloud_database_used": false,
+  "cpu": "AMD64 Family 26 Model 36 Stepping 0, AuthenticAMD",
+  "dependencies": {
+    "faiss-cpu": "1.14.3",
+    "matplotlib": "3.11.0",
+    "numpy": "2.5.1",
+    "psutil": "7.2.2",
+    "sentence-transformers": "5.6.0"
+  },
+  "embedding_backend": "hash",
+  "embedding_model": "deterministic_hash_embedding",
+  "gpu": "not_configured",
+  "local_only": true,
+  "logical_cpu_count": 24,
+  "network_calls": 0,
+  "os": "Windows-11-10.0.26200-SP0",
+  "python": "3.13.5",
+  "ram_total_bytes": 33413771264
+}
