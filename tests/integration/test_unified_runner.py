@@ -4,6 +4,8 @@ import csv
 import json
 from pathlib import Path
 
+import pytest
+
 from statebudgetmem.core.experiment import ExperimentConfig
 from statebudgetmem.core.registry import MethodRegistry
 from statebudgetmem.schemas.results import MethodResult
@@ -85,6 +87,33 @@ def test_unified_runner_runs_existing_tfidf_adapter(tmp_path: Path) -> None:
     assert raw
     assert all(row["total_token_cost"] <= 20 for row in raw)
     assert {row["query_type"] for row in raw} == {"CURRENT", "HISTORICAL", "CHANGE"}
+
+
+def test_unified_runner_runs_memorybank_core_adapter(tmp_path: Path) -> None:
+    pytest.importorskip("numpy")
+    pytest.importorskip("faiss")
+    result = run_unified_experiment(
+        ExperimentConfig(
+            dataset_path=Path("data/controlled/interface_smoke_v1.jsonl"),
+            results_dir=tmp_path,
+            methods=("memorybank_core",),
+            top_k=2,
+            candidate_k=3,
+            token_budget=32,
+            embedding_backend="hash",
+            embedding_model="deterministic_hash_embedding",
+            reinforcement_enabled=False,
+            query_state_policy="independent",
+        )
+    )
+    raw = [
+        json.loads(line)
+        for line in Path(result["raw_path"]).read_text(encoding="utf-8").splitlines()
+    ]
+    assert len(raw) == 3
+    assert all(row["method"] == "memorybank_core" for row in raw)
+    assert all(row["total_token_cost"] <= 32 for row in raw)
+    assert all(row["status"] == "success" for row in raw)
 
 
 def test_unified_runner_loads_frozen_yaml_config(tmp_path: Path) -> None:

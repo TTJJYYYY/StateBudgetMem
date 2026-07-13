@@ -344,6 +344,10 @@ class MemoryBank(MemorySystem):
 
         return memory.memory_id
 
+    def ingest_piece(self, memory: MemoryPiece) -> str:
+        """Insert an already structured piece through the shared dense backend."""
+        return self._insert_memory(memory)
+
     def _auto_tag(self, content: str) -> List[str]:
         """简单自动标签（基于关键词）"""
         tags = []
@@ -372,6 +376,7 @@ class MemoryBank(MemorySystem):
         current_time: str | float | int | None = None,
         exclude_forgotten: bool = False,
         reinforce: bool = True,
+        candidate_k: int | None = None,
     ) -> List[Dict]:
         """检索记忆，保持原 list[dict] 返回类型。"""
         result = self.retrieve_with_metadata(
@@ -382,6 +387,7 @@ class MemoryBank(MemorySystem):
             current_time=current_time,
             exclude_forgotten=exclude_forgotten,
             reinforce=reinforce,
+            candidate_k=candidate_k,
         )
         return result["memories"]
 
@@ -394,6 +400,7 @@ class MemoryBank(MemorySystem):
         current_time: str | float | int | None = None,
         exclude_forgotten: bool = False,
         reinforce: bool = True,
+        candidate_k: int | None = None,
     ) -> Dict[str, Any]:
         """Retrieve memories and expose forgetting/filtering metadata."""
         if top_k <= 0:
@@ -416,7 +423,12 @@ class MemoryBank(MemorySystem):
             else None
         )
         retention_time_unit_hours = self.decay_interval_sec / 3600.0
-        search_k = min(max(top_k * 3, top_k), self.index.ntotal)
+        if candidate_k is not None and candidate_k <= 0:
+            raise ValueError("candidate_k must be positive or None")
+        search_k = min(
+            candidate_k if candidate_k is not None else max(top_k * 3, top_k),
+            self.index.ntotal,
+        )
         candidates: List[Dict[str, Any]] = []
         ranking_pool: List[Dict[str, Any]] = []
         forgotten_memory_ids: List[str] = []
@@ -477,7 +489,11 @@ class MemoryBank(MemorySystem):
                 excluded_ids = []
             candidate_count_after_forgetting = len(ranking_pool)
 
-            if len(ranking_pool) >= top_k or search_k == self.index.ntotal:
+            if (
+                len(ranking_pool) >= top_k
+                or search_k == self.index.ntotal
+                or candidate_k is not None
+            ):
                 break
             search_k = min(self.index.ntotal, search_k * 2)
 
@@ -490,18 +506,13 @@ class MemoryBank(MemorySystem):
             item["score"] = item["composite_score"]
 
         if reinforce:
+            after_states = self.reinforce_memory_ids(
+                [item["memory_id"] for item in selected], current_time=now
+            )
             for item in selected:
-                mem = self.memories_by_id.get(item["memory_id"])
-                if mem is None:
-                    continue
-                mem.strength += 1
-                mem.last_accessed = now
-                mem.access_count += 1
-                self.access_count += 1
-                item["after_strength"] = mem.strength
-                item["after_last_accessed"] = mem.last_accessed
-                item["after_access_count"] = mem.access_count
-                item["strength"] = mem.strength
+                after = after_states.get(item["memory_id"])
+                if after is not None:
+                    item.update(after)
 
         return {
             "memories": selected,
@@ -513,7 +524,32 @@ class MemoryBank(MemorySystem):
             "forgetting_threshold": self.forgetting_threshold,
             "retention_time_unit_hours": retention_time_unit_hours,
             "reinforcement_applied": reinforce,
+            "candidate_k": candidate_k,
         }
+
+    def reinforce_memory_ids(
+        self,
+        memory_ids: List[str],
+        current_time: str | float | int | None = None,
+    ) -> Dict[str, Dict[str, Any]]:
+        """Apply the existing spacing-effect update to an explicit final result set."""
+        now = self._parse_time(current_time)
+        after_states: Dict[str, Dict[str, Any]] = {}
+        for memory_id in memory_ids:
+            mem = self.memories_by_id.get(memory_id)
+            if mem is None:
+                continue
+            mem.strength += 1
+            mem.last_accessed = now
+            mem.access_count += 1
+            self.access_count += 1
+            after_states[memory_id] = {
+                "after_strength": mem.strength,
+                "after_last_accessed": mem.last_accessed,
+                "after_access_count": mem.access_count,
+                "strength": mem.strength,
+            }
+        return after_states
 
     def _retrieval_candidate_row(
         self,

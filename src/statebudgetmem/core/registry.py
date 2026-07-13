@@ -40,4 +40,11 @@ def default_method_registry() -> MethodRegistry:
 
     registry = MethodRegistry()
     registry.register("tfidf_topk", lambda _context: TfidfMemoryMethod())
+    registry.register("memorybank_core", _create_memorybank_method)
     return registry
+
+
+def _create_memorybank_method(context: MethodBuildContext) -> MemoryMethod:
+    from statebudgetmem.baselines.memorybank.adapter import MemoryBankMethod
+
+    return MemoryBankMethod(context)
