@@ -273,6 +273,36 @@ def test_memorybank_default_mode_records_but_does_not_exclude_forgotten() -> Non
     assert "old" in [row["memory_id"] for row in result["memories"]]
     assert old.strength == 2.0
     assert recent.strength == 11.0
+    assert result["reinforcement_applied"] is True
+
+
+def test_memorybank_reinforce_false_has_no_side_effects() -> None:
+    from statebudgetmem.baselines.memorybank.system import MemoryBank
+    from statebudgetmem.interfaces import MemoryPiece, MemoryType
+
+    piece = MemoryPiece(
+        content="stable preference",
+        timestamp=MemoryBank._parse_time("2026-06-10 09:00"),
+        memory_type=MemoryType.DIALOG,
+        memory_id="stable",
+        last_accessed=MemoryBank._parse_time("2026-06-10 09:00"),
+    )
+    bank = _memorybank_with_pieces([piece], distances=[(0.9, 0)])
+    before = (piece.strength, piece.last_accessed, piece.access_count, bank.access_count)
+
+    result = MemoryBank.retrieve_with_metadata(
+        bank,
+        "preference",
+        top_k=1,
+        current_time="2026-06-10 10:00",
+        reinforce=False,
+    )
+
+    assert (piece.strength, piece.last_accessed, piece.access_count, bank.access_count) == before
+    assert result["reinforcement_applied"] is False
+    assert "after_strength" not in result["memories"][0]
+    assert "after_last_accessed" not in result["memories"][0]
+    assert "after_access_count" not in result["memories"][0]
 
 
 def test_memorybank_exclude_forgotten_filters_without_reinforcement() -> None:
@@ -425,9 +455,10 @@ def test_memorybank_top_k_non_positive_returns_full_empty_metadata() -> None:
         "candidate_count_before_forgetting": 0,
         "candidate_count_after_forgetting": 0,
         "exclude_forgotten": True,
-        "forgetting_threshold": 0.5,
-        "retention_time_unit_hours": 24.0,
-    }
+            "forgetting_threshold": 0.5,
+            "retention_time_unit_hours": 24.0,
+            "reinforcement_applied": True,
+        }
     assert bank.index.search_calls == []
     assert piece.strength == 1.0
     assert piece.access_count == 0

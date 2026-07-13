@@ -12,6 +12,12 @@ instead of defining private copies.
 """
 
 from statebudgetmem.core.method import MemoryMethod
+from statebudgetmem.core.experiment import (
+    ExperimentConfig,
+    MethodBuildContext,
+    ResourceMetrics,
+    RunMetadata,
+)
 from statebudgetmem.core.online import (
     MemoryPiece,
     MemoryStatus,
@@ -36,6 +42,10 @@ from statebudgetmem.versioning.contracts import UpdateOperation, VersionManager
 
 __all__ = [
     "MemoryMethod",
+    "ExperimentConfig",
+    "MethodBuildContext",
+    "RunMetadata",
+    "ResourceMetrics",
     "MethodResult",
     "MemoryPiece",
     "MemorySystem",

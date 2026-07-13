@@ -172,6 +172,22 @@ do not use a local LLM in this phase.
 
 ## Demo Commands
 
+## Frozen unified-interface smoke
+
+The Day 1–2 integration contract is frozen in
+[`docs/UNIFIED_SPEC.md`](docs/UNIFIED_SPEC.md). The smoke runner currently
+registers only the existing offline TF-IDF adapter; MemoryBank Core and the full
+StateBudgetMem adapter remain next-stage work.
+
+```powershell
+.venv\Scripts\python.exe -m statebudgetmem.unified_runner `
+  --config configs\interface_smoke.yaml
+```
+
+It writes `raw.jsonl`, `summary.json`, `summary.csv`, and `environment.json`
+under one unique run directory. This fixture verifies interface integration; it
+is not formal paper evidence.
+
 Install the project first when using the `statebudgetmem` and
 `statebudgetmem-demo` command names:
 

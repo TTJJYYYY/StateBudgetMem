@@ -87,3 +87,16 @@ def test_method_result_validates_rank_and_total_token_contract() -> None:
 
     with pytest.raises(ValueError, match="total_token_cost"):
         MethodResult.model_validate(payload)
+
+
+def test_tfidf_adapter_enforces_explicit_token_budget() -> None:
+    scenario = load_scenarios("data/controlled/interface_smoke_v1.jsonl")[0]
+    method = TfidfMemoryMethod()
+    method.ingest(scenario.memories)
+
+    result = method.retrieve(scenario.queries[0], top_k=3, token_budget=12)
+
+    assert result.total_token_cost <= 12
+    assert [item.rank for item in result.retrieved_memories] == list(
+        range(1, len(result.retrieved_memories) + 1)
+    )

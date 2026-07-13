@@ -371,6 +371,7 @@ class MemoryBank(MemorySystem):
         memory_types: Optional[List[str]] = None,
         current_time: str | float | int | None = None,
         exclude_forgotten: bool = False,
+        reinforce: bool = True,
     ) -> List[Dict]:
         """检索记忆，保持原 list[dict] 返回类型。"""
         result = self.retrieve_with_metadata(
@@ -380,6 +381,7 @@ class MemoryBank(MemorySystem):
             memory_types=memory_types,
             current_time=current_time,
             exclude_forgotten=exclude_forgotten,
+            reinforce=reinforce,
         )
         return result["memories"]
 
@@ -391,14 +393,15 @@ class MemoryBank(MemorySystem):
         memory_types: Optional[List[str]] = None,
         current_time: str | float | int | None = None,
         exclude_forgotten: bool = False,
+        reinforce: bool = True,
     ) -> Dict[str, Any]:
         """Retrieve memories and expose forgetting/filtering metadata."""
         if top_k <= 0:
-            return self._empty_retrieval_metadata(exclude_forgotten)
+            return self._empty_retrieval_metadata(exclude_forgotten, reinforce)
 
         self._ensure_index()
         if self.index.ntotal == 0:
-            return self._empty_retrieval_metadata(exclude_forgotten)
+            return self._empty_retrieval_metadata(exclude_forgotten, reinforce)
 
         now = self._parse_time(current_time)
 
@@ -486,18 +489,19 @@ class MemoryBank(MemorySystem):
             item["retrieval_score"] = item["composite_score"]
             item["score"] = item["composite_score"]
 
-        for item in selected:
-            mem = self.memories_by_id.get(item["memory_id"])
-            if mem is None:
-                continue
-            mem.strength += 1
-            mem.last_accessed = now
-            mem.access_count += 1
-            self.access_count += 1
-            item["after_strength"] = mem.strength
-            item["after_last_accessed"] = mem.last_accessed
-            item["after_access_count"] = mem.access_count
-            item["strength"] = mem.strength
+        if reinforce:
+            for item in selected:
+                mem = self.memories_by_id.get(item["memory_id"])
+                if mem is None:
+                    continue
+                mem.strength += 1
+                mem.last_accessed = now
+                mem.access_count += 1
+                self.access_count += 1
+                item["after_strength"] = mem.strength
+                item["after_last_accessed"] = mem.last_accessed
+                item["after_access_count"] = mem.access_count
+                item["strength"] = mem.strength
 
         return {
             "memories": selected,
@@ -508,6 +512,7 @@ class MemoryBank(MemorySystem):
             "exclude_forgotten": exclude_forgotten,
             "forgetting_threshold": self.forgetting_threshold,
             "retention_time_unit_hours": retention_time_unit_hours,
+            "reinforcement_applied": reinforce,
         }
 
     def _retrieval_candidate_row(
@@ -555,7 +560,9 @@ class MemoryBank(MemorySystem):
             "age_hours": round(age_hours, 1),
         }
 
-    def _empty_retrieval_metadata(self, exclude_forgotten: bool) -> Dict[str, Any]:
+    def _empty_retrieval_metadata(
+        self, exclude_forgotten: bool, reinforce: bool = True
+    ) -> Dict[str, Any]:
         return {
             "memories": [],
             "forgotten_memory_ids": [],
@@ -565,6 +572,7 @@ class MemoryBank(MemorySystem):
             "exclude_forgotten": exclude_forgotten,
             "forgetting_threshold": self.forgetting_threshold,
             "retention_time_unit_hours": self.decay_interval_sec / 3600.0,
+            "reinforcement_applied": reinforce,
         }
 
     # ── 核心接口：update ──
