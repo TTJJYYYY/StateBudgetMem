@@ -35,7 +35,7 @@ class TfidfMemoryMethod:
         retrieved = self._retriever.retrieve(query, self._memories, top_k)
         latency_ms = (time.perf_counter() - started) * 1000.0
 
-        unified_memories = [
+        candidates = [
             RetrievedMemory(
                 memory_id=item.memory.memory_id,
                 score=item.score,
@@ -46,6 +46,9 @@ class TfidfMemoryMethod:
             )
             for item in retrieved
         ]
+        unified_memories = _apply_token_budget(candidates, token_budget)
+        for rank, item in enumerate(unified_memories, start=1):
+            item.rank = rank
         return MethodResult(
             method_name=self.name,
             query_id=query.query_id,
@@ -63,3 +66,21 @@ def _adapter_metadata(*, token_budget: int | None, mutate: bool) -> dict[str, An
         "mutate": mutate,
         "source_retriever": "TfidfCosineRetriever",
     }
+
+
+def _apply_token_budget(
+    candidates: list[RetrievedMemory],
+    token_budget: int | None,
+) -> list[RetrievedMemory]:
+    if token_budget is None:
+        return candidates
+    if token_budget < 0:
+        raise ValueError("token_budget must be non-negative or None")
+    selected: list[RetrievedMemory] = []
+    used = 0
+    for candidate in candidates:
+        if used + candidate.token_cost > token_budget:
+            continue
+        selected.append(candidate)
+        used += candidate.token_cost
+    return selected
