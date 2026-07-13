@@ -174,10 +174,11 @@ do not use a local LLM in this phase.
 
 ## Frozen unified-interface smoke
 
-The Day 1–2 integration contract is frozen in
+The unified integration contract is frozen in
 [`docs/UNIFIED_SPEC.md`](docs/UNIFIED_SPEC.md). The smoke runner currently
-registers only the existing offline TF-IDF adapter; MemoryBank Core and the full
-StateBudgetMem adapter remain next-stage work.
+registers the existing offline TF-IDF adapter and the real stateful
+`memorybank_core` adapter. The full StateBudgetMem adapter remains next-stage
+work.
 
 ```powershell
 .venv\Scripts\python.exe -m statebudgetmem.unified_runner `
@@ -187,6 +188,20 @@ StateBudgetMem adapter remain next-stage work.
 It writes `raw.jsonl`, `summary.json`, `summary.csv`, and `environment.json`
 under one unique run directory. This fixture verifies interface integration; it
 is not formal paper evidence.
+
+The MemoryBank adapter has a separate deterministic offline smoke. It reuses
+MemoryBank's FAISS `IndexFlatIP`, cosine-normalized embeddings, time/strength
+ranking, forgetting filter, and reinforcement lifecycle:
+
+```powershell
+.venv\Scripts\python.exe -m statebudgetmem.unified_runner `
+  --config configs\memorybank_interface_smoke.yaml
+```
+
+Dense StateBudgetMem variants should compose
+`statebudgetmem.baselines.memorybank.adapter.MemoryBankMethod` (or its exposed
+`bank` and `embedding_model`) so candidate memories use exactly the same dense
+backend and scoring implementation.
 
 Install the project first when using the `statebudgetmem` and
 `statebudgetmem-demo` command names:

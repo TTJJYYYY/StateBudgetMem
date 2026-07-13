@@ -1,10 +1,59 @@
-"""Local deterministic embeddings for MemoryBank smoke runs."""
+"""Shared embedding construction for dense MemoryBank-based methods."""
 
 from __future__ import annotations
 
 import hashlib
 
 import numpy as np
+
+
+class HashEmbeddingModel:
+    """Offline deterministic encoder used by smoke and contract tests."""
+
+    name = "deterministic_hash_embedding"
+
+    def __init__(self, dim: int = 32) -> None:
+        if dim <= 0:
+            raise ValueError(f"dim must be > 0, got {dim!r}")
+        self.dimension = dim
+
+    def encode(self, text: str) -> np.ndarray:
+        return deterministic_hash_embedding(text, self.dimension)
+
+
+class SentenceTransformerEmbeddingModel:
+    """Thin local-model wrapper with the scalar-text API MemoryBank expects."""
+
+    def __init__(self, model_name: str) -> None:
+        if not model_name or model_name == "method_default":
+            model_name = "all-MiniLM-L6-v2"
+        try:
+            from sentence_transformers import SentenceTransformer
+        except ImportError as exc:  # pragma: no cover - optional dependency
+            raise ImportError(
+                "Sentence-transformer embeddings require the memorybank extra: "
+                "pip install -e '.[memorybank]'"
+            ) from exc
+        self.name = model_name
+        self._model = SentenceTransformer(model_name)
+
+    def encode(self, text: str) -> np.ndarray:
+        return np.asarray(
+            self._model.encode(text, normalize_embeddings=True), dtype=np.float32
+        )
+
+
+def build_embedding_model(backend: str, model_name: str):
+    """Build the shared encoder used by MemoryBank and StateBudgetMem adapters."""
+    normalized = backend.strip().lower().replace("-", "_")
+    if normalized in {"method_default", "hash", "deterministic_hash"}:
+        return HashEmbeddingModel()
+    if normalized in {"sentence_transformer", "sentence_transformers", "minilm"}:
+        return SentenceTransformerEmbeddingModel(model_name)
+    raise ValueError(
+        "unsupported embedding_backend for dense MemoryBank methods: "
+        f"{backend!r}"
+    )
 
 
 def deterministic_hash_embedding(text: str, dim: int = 32) -> np.ndarray:

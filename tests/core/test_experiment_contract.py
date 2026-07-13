@@ -53,7 +53,7 @@ def test_default_registry_only_exposes_frozen_smoke_adapter() -> None:
         experiment=ExperimentConfig(dataset_path=Path("fixture.jsonl")),
         work_dir=Path("results/test"),
     )
-    assert registry.names() == ("tfidf_topk",)
+    assert registry.names() == ("memorybank_core", "tfidf_topk")
     assert registry.create("tfidf_topk", context).name == "tfidf_topk"
     with pytest.raises(ValueError, match="available methods"):
         registry.create("not_registered", context)
