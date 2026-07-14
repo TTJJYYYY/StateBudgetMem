@@ -42,9 +42,11 @@ _METHOD_NAMES: dict[StateBudgetMemMode, str] = {
 @dataclass(frozen=True)
 class EligibilityDecision:
     effective_query_type: QueryType
+    predicted_query_type: QueryType | None
     eligible_memory_ids: frozenset[str]
     source_view: str
     router_source: str
+    selection_policy: str
     metadata: Mapping[str, Any]
 
 
@@ -149,29 +151,37 @@ class StateBudgetMemDenseMethod:
             reference_time=query.reference_time.isoformat(),
         )
 
-    def _effective_query_type(self, query: QueryRecord) -> tuple[QueryType, str]:
+    def _effective_query_type(
+        self, query: QueryRecord
+    ) -> tuple[QueryType, QueryType | None, str, str]:
         if self._mode is StateBudgetMemMode.VERSIONING:
-            effective = (
-                QueryType.GENERAL
-                if query.query_type is QueryType.GENERAL
-                else QueryType.CURRENT
+            return (
+                QueryType.CURRENT,
+                None,
+                "none",
+                "current_only_no_router",
             )
-            return effective, "versioning_current"
 
         if self._mode is StateBudgetMemMode.DUAL_VIEWS:
-            effective = (
-                QueryType.GENERAL
-                if query.query_type is QueryType.GENERAL
-                else QueryType.CHANGE
+            return (
+                QueryType.CHANGE,
+                None,
+                "none",
+                "current_and_history_no_router",
             )
-            return effective, "dual_views_no_router"
 
         if self._mode is StateBudgetMemMode.RULE_ROUTING:
             if self._router is None:  # defensive invariant
                 raise RuntimeError("rule routing mode requires RuleBasedRouter")
-            return self._router.classify(self._to_routing_query(query)), "rule"
+            predicted = self._router.classify(self._to_routing_query(query))
+            return predicted, predicted, "rule", "rule_routed"
 
-        return query.query_type, "oracle_query_type"
+        return (
+            query.query_type,
+            query.query_type,
+            "oracle_query_type",
+            "oracle_routed",
+        )
 
     def _current_and_history_records(self, query: QueryRecord) -> list[MemoryRecord]:
         records_by_id = {
@@ -185,7 +195,12 @@ class StateBudgetMemDenseMethod:
         return [records_by_id[memory_id] for memory_id in sorted(records_by_id)]
 
     def _resolve_eligibility(self, query: QueryRecord) -> EligibilityDecision:
-        effective_query_type, router_source = self._effective_query_type(query)
+        (
+            effective_query_type,
+            predicted_query_type,
+            router_source,
+            selection_policy,
+        ) = self._effective_query_type(query)
 
         if effective_query_type is QueryType.GENERAL:
             records: list[MemoryRecord] = []
@@ -209,9 +224,11 @@ class StateBudgetMemDenseMethod:
 
         decision = EligibilityDecision(
             effective_query_type=effective_query_type,
+            predicted_query_type=predicted_query_type,
             eligible_memory_ids=frozenset(memory.memory_id for memory in records),
             source_view=source_view,
             router_source=router_source,
+            selection_policy=selection_policy,
             metadata=MappingProxyType({"mode": self._mode.value}),
         )
         self._last_eligibility_decision = decision
@@ -260,7 +277,7 @@ class StateBudgetMemDenseMethod:
             method_name=self.name,
             query_id=query.query_id,
             retrieved_memories=base_result.retrieved_memories,
-            predicted_query_type=decision.effective_query_type,
+            predicted_query_type=decision.predicted_query_type,
             total_token_cost=base_result.total_token_cost,
             latency_ms=(time.perf_counter() - started) * 1000.0,
             metadata=metadata,
@@ -279,7 +296,7 @@ class StateBudgetMemDenseMethod:
             method_name=self.name,
             query_id=query.query_id,
             retrieved_memories=[],
-            predicted_query_type=decision.effective_query_type,
+            predicted_query_type=decision.predicted_query_type,
             total_token_cost=0,
             latency_ms=(time.perf_counter() - started) * 1000.0,
             metadata=metadata,
@@ -293,4 +310,5 @@ class StateBudgetMemDenseMethod:
             "source_view": decision.source_view,
             "eligible_memory_count": len(decision.eligible_memory_ids),
             "base_method_name": "memorybank_core",
+            "selection_policy": decision.selection_policy,
         }

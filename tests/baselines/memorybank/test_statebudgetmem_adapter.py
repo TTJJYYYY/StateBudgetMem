@@ -319,6 +319,31 @@ def test_non_rule_modes_do_not_call_rule_router(mode) -> None:
     method._resolve_eligibility(_query("我现在怎么上班？", QueryType.CURRENT))
 
 
+@pytest.mark.parametrize(
+    "query_type",
+    [
+        QueryType.CURRENT,
+        QueryType.HISTORICAL,
+        QueryType.CHANGE,
+        QueryType.GENERAL,
+    ],
+)
+def test_versioning_eligibility_ignores_query_type(query_type) -> None:
+    method = _method(StateBudgetMemMode.VERSIONING, router=_ExplodingRouter())
+    method.ingest(_memories())
+
+    decision = method._resolve_eligibility(
+        _query("same query", query_type, reference_time=date(2026, 6, 1))
+    )
+
+    assert decision.eligible_memory_ids == frozenset({"m_metro"})
+    assert decision.effective_query_type is QueryType.CURRENT
+    assert decision.predicted_query_type is None
+    assert decision.source_view == "current"
+    assert decision.router_source == "none"
+    assert decision.selection_policy == "current_only_no_router"
+
+
 def test_versioning_uses_current_snapshot_for_every_personal_query(monkeypatch) -> None:
     method = _method(StateBudgetMemMode.VERSIONING)
     method.ingest(_memories())
@@ -335,9 +360,36 @@ def test_versioning_uses_current_snapshot_for_every_personal_query(monkeypatch) 
     assert calls[0]["top_k"] == 2
     assert calls[0]["token_budget"] == 9
     assert calls[0]["mutate"] is True
+    assert result.predicted_query_type is None
     assert result.metadata["effective_query_type"] == "CURRENT"
-    assert result.metadata["router_source"] == "versioning_current"
+    assert result.metadata["router_source"] == "none"
     assert result.metadata["source_view"] == "current"
+    assert result.metadata["selection_policy"] == "current_only_no_router"
+
+
+@pytest.mark.parametrize(
+    "query_type",
+    [
+        QueryType.CURRENT,
+        QueryType.HISTORICAL,
+        QueryType.CHANGE,
+        QueryType.GENERAL,
+    ],
+)
+def test_dual_views_eligibility_ignores_query_type(query_type) -> None:
+    method = _method(StateBudgetMemMode.DUAL_VIEWS, router=_ExplodingRouter())
+    method.ingest(_memories())
+
+    decision = method._resolve_eligibility(
+        _query("same query", query_type, reference_time=date(2026, 6, 1))
+    )
+
+    assert decision.eligible_memory_ids == frozenset({"m_drive", "m_metro"})
+    assert decision.effective_query_type is QueryType.CHANGE
+    assert decision.predicted_query_type is None
+    assert decision.source_view == "current_and_history"
+    assert decision.router_source == "none"
+    assert decision.selection_policy == "current_and_history_no_router"
 
 
 def test_dual_views_uses_current_and_full_history_without_gold(monkeypatch) -> None:
@@ -355,9 +407,13 @@ def test_dual_views_uses_current_and_full_history_without_gold(monkeypatch) -> N
     result = method.retrieve(query, top_k=2)
 
     assert calls[0]["allowed_memory_ids"] == {"m_drive", "m_metro"}
+    assert result.predicted_query_type is None
     assert result.metadata["effective_query_type"] == "CHANGE"
-    assert result.metadata["router_source"] == "dual_views_no_router"
+    assert result.metadata["router_source"] == "none"
     assert result.metadata["source_view"] == "current_and_history"
+    assert (
+        result.metadata["selection_policy"] == "current_and_history_no_router"
+    )
 
 
 def test_eligibility_and_dual_view_order_are_deterministic() -> None:
@@ -377,6 +433,8 @@ def test_eligibility_and_dual_view_order_are_deterministic() -> None:
     assert first == second
     assert first.eligible_memory_ids == frozenset({"m_drive", "m_metro"})
     assert first_order == second_order == ["m_drive", "m_metro"]
+    assert first.selection_policy == second.selection_policy
+    assert first.selection_policy == "current_and_history_no_router"
     assert dict(first.metadata) == dict(second.metadata) == {"mode": "dual_views"}
 
 
@@ -429,6 +487,7 @@ def test_rule_routing_selects_view_from_text_not_annotation(
     assert result.predicted_query_type is expected_type
     assert result.metadata["router_source"] == "rule"
     assert result.metadata["source_view"] == source_view
+    assert result.metadata["selection_policy"] == "rule_routed"
 
 
 def test_rule_general_skips_dense_retrieval(monkeypatch) -> None:
@@ -449,9 +508,11 @@ def test_rule_general_skips_dense_retrieval(monkeypatch) -> None:
 
     assert called is False
     assert result.retrieved_memories == []
+    assert result.predicted_query_type is QueryType.GENERAL
     assert result.total_token_cost == 0
     assert result.metadata["source_view"] == "none"
     assert result.metadata["skipped_dense_retrieval"] is True
+    assert result.metadata["selection_policy"] == "rule_routed"
 
 
 @pytest.mark.parametrize(
@@ -482,6 +543,28 @@ def test_oracle_uses_only_query_type_and_not_gold(
     assert calls[0]["allowed_memory_ids"] == expected_ids
     assert result.predicted_query_type is query_type
     assert result.metadata["router_source"] == "oracle_query_type"
+    assert result.metadata["selection_policy"] == "oracle_routed"
+
+
+def test_oracle_eligibility_ignores_all_gold_memory_ids() -> None:
+    method = _method(StateBudgetMemMode.ORACLE_ROUTING, router=_ExplodingRouter())
+    method.ingest(_memories())
+    plain = _query("same query", QueryType.CHANGE)
+    annotated = _query(
+        "same query",
+        QueryType.CHANGE,
+        gold_relevant_memory_ids=["not-relevant"],
+        gold_valid_memory_ids=["not-valid"],
+        gold_stale_memory_ids=["not-stale"],
+    )
+
+    plain_decision = method._resolve_eligibility(plain)
+    annotated_decision = method._resolve_eligibility(annotated)
+
+    assert plain_decision.eligible_memory_ids == annotated_decision.eligible_memory_ids
+    assert plain_decision.predicted_query_type is QueryType.CHANGE
+    assert annotated_decision.predicted_query_type is QueryType.CHANGE
+    assert annotated_decision.selection_policy == "oracle_routed"
 
 
 def test_oracle_general_returns_valid_empty_result_without_dense(monkeypatch) -> None:
@@ -498,9 +581,11 @@ def test_oracle_general_returns_valid_empty_result_without_dense(monkeypatch) ->
     assert result.method_name == "statebudgetmem_oracle"
     assert result.query_id == "q1"
     assert result.retrieved_memories == []
+    assert result.predicted_query_type is QueryType.GENERAL
     assert result.total_token_cost == 0
     assert result.latency_ms >= 0
     assert result.metadata["eligible_memory_count"] == 0
+    assert result.metadata["selection_policy"] == "oracle_routed"
 
 
 def test_missing_scoped_interface_raises_for_nonempty_eligibility() -> None:
@@ -553,41 +638,94 @@ def test_result_preserves_base_items_scores_ranks_tokens_and_metadata(monkeypatc
         "source_view",
         "eligible_memory_count",
         "base_method_name",
+        "selection_policy",
     } <= set(result.metadata)
+
+
+@pytest.mark.parametrize(
+    "mode, text, annotated_type, expected_prediction",
+    [
+        (StateBudgetMemMode.VERSIONING, "anything", QueryType.GENERAL, None),
+        (StateBudgetMemMode.DUAL_VIEWS, "anything", QueryType.GENERAL, None),
+        (
+            StateBudgetMemMode.RULE_ROUTING,
+            "我现在怎么上班？",
+            QueryType.HISTORICAL,
+            QueryType.CURRENT,
+        ),
+        (
+            StateBudgetMemMode.ORACLE_ROUTING,
+            "anything",
+            QueryType.HISTORICAL,
+            QueryType.HISTORICAL,
+        ),
+    ],
+)
+def test_predicted_query_type_reflects_only_actual_routing(
+    monkeypatch, mode, text, annotated_type, expected_prediction
+) -> None:
+    method = _method(mode)
+    method.ingest(_memories())
+    _install_fake_dense(monkeypatch, method)
+
+    result = method.retrieve(_query(text, annotated_type), top_k=1)
+
+    assert result.predicted_query_type is expected_prediction
 
 
 def test_unified_runner_serializes_empty_and_fake_dense_results(
     tmp_path, monkeypatch
 ) -> None:
-    method = _method(StateBudgetMemMode.ORACLE_ROUTING)
-    method.ingest(_memories())
-    empty_query = _query("general question", QueryType.GENERAL)
-    empty_result = method.retrieve(empty_query, top_k=1)
+    versioning = _method(StateBudgetMemMode.VERSIONING)
+    versioning.ingest(_memories())
+    _install_fake_dense(monkeypatch, versioning)
+    versioning_query = _query("same query", QueryType.GENERAL)
+    versioning_result = versioning.retrieve(versioning_query, top_k=1)
 
-    _install_fake_dense(monkeypatch, method)
-    dense_query = _query("current commute", QueryType.CURRENT)
-    dense_result = method.retrieve(dense_query, top_k=1)
+    dual_views = _method(StateBudgetMemMode.DUAL_VIEWS)
+    dual_views.ingest(_memories())
+    _install_fake_dense(monkeypatch, dual_views)
+    dual_query = _query("same query", QueryType.GENERAL)
+    dual_result = dual_views.retrieve(dual_query, top_k=1)
+
+    rule = _method(StateBudgetMemMode.RULE_ROUTING)
+    rule.ingest(_memories())
+    rule_query = _query("法国的首都是什么？", QueryType.CURRENT)
+    rule_result = rule.retrieve(rule_query, top_k=1)
+
+    oracle = _method(StateBudgetMemMode.ORACLE_ROUTING)
+    oracle.ingest(_memories())
+    oracle_query = _query("general question", QueryType.GENERAL)
+    oracle_result = oracle.retrieve(oracle_query, top_k=1)
 
     output_path = tmp_path / "raw.jsonl"
     _write_jsonl(
         output_path,
         [
-            _unified_result_row(empty_query, empty_result),
-            _unified_result_row(dense_query, dense_result),
+            _unified_result_row(versioning_query, versioning_result),
+            _unified_result_row(dual_query, dual_result),
+            _unified_result_row(rule_query, rule_result),
+            _unified_result_row(oracle_query, oracle_result),
         ],
     )
     rows = [json.loads(line) for line in output_path.read_text(encoding="utf-8").splitlines()]
 
-    assert len(rows) == 2
+    assert len(rows) == 4
     for row in rows:
         metadata = row["method_metadata"]
         assert isinstance(metadata, dict)
         assert isinstance(metadata["statebudgetmem_mode"], str)
         assert isinstance(metadata["effective_query_type"], str)
+        assert isinstance(metadata["selection_policy"], str)
         assert not any("gold" in key for key in metadata)
-    assert rows[0]["retrieved_memory_ids"] == []
-    assert rows[1]["retrieved_memory_ids"] == ["m_metro"]
-    assert rows[1]["method_metadata"]["base"] == "kept"
+    assert rows[0]["retrieved_memory_ids"] == ["m_metro"]
+    assert rows[0]["predicted_query_type"] is None
+    assert rows[1]["retrieved_memory_ids"] == ["m_drive"]
+    assert rows[1]["predicted_query_type"] is None
+    assert rows[2]["retrieved_memory_ids"] == []
+    assert rows[2]["predicted_query_type"] == "GENERAL"
+    assert rows[3]["retrieved_memory_ids"] == []
+    assert rows[3]["predicted_query_type"] == "GENERAL"
 
 
 def test_adapter_latency_covers_dense_call(monkeypatch) -> None:
