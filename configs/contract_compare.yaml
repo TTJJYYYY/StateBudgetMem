@@ -1,0 +1,18 @@
+# Unified experiment: compare all registered methods side-by-side.
+# When StateBudgetMem adapters become available, append them here.
+dataset_path: data/controlled/interface_smoke_v1.jsonl
+results_dir: results/contract_compare
+methods: [tfidf_topk, memorybank_core]
+top_k: 3
+candidate_k: 8
+token_budget: 64
+random_seed: 42
+repeat: 1
+embedding_backend: hash
+embedding_model: deterministic_hash_embedding
+forgetting_enabled: true
+forgetting_threshold: 0.3
+exclude_forgotten: false
+reinforcement_enabled: false
+query_state_policy: independent
+token_counter_name: memory_record_token_cost
