@@ -588,14 +588,67 @@ def test_oracle_general_returns_valid_empty_result_without_dense(monkeypatch) ->
     assert result.metadata["selection_policy"] == "oracle_routed"
 
 
-def test_missing_scoped_interface_raises_for_nonempty_eligibility() -> None:
+def test_nonempty_eligibility_uses_real_scoped_retrieval() -> None:
     method = _method(StateBudgetMemMode.ORACLE_ROUTING)
     method.ingest(_memories())
 
-    with pytest.raises(
-        RuntimeError, match="scoped MemoryBank retrieval interface is not available"
-    ):
-        method.retrieve(_query("anything", QueryType.CURRENT), top_k=1)
+    result = method.retrieve(_query("metro commute", QueryType.CURRENT), top_k=1)
+
+    assert [item.memory_id for item in result.retrieved_memories] == ["m_metro"]
+    assert result.metadata["core_retrieval"]["scoped_retrieval"] is True
+    assert result.metadata["core_retrieval"]["matched_allowed_memory_count"] == 1
+
+
+@pytest.mark.parametrize(
+    "mode, query, expected_ids, expected_prediction, selection_policy",
+    [
+        (
+            StateBudgetMemMode.VERSIONING,
+            _query("metro commute", QueryType.GENERAL),
+            {"m_metro"},
+            None,
+            "current_only_no_router",
+        ),
+        (
+            StateBudgetMemMode.DUAL_VIEWS,
+            _query("commute", QueryType.GENERAL),
+            {"m_drive", "m_metro"},
+            None,
+            "current_and_history_no_router",
+        ),
+        (
+            StateBudgetMemMode.RULE_ROUTING,
+            _query("我现在怎么上班？", QueryType.HISTORICAL),
+            {"m_metro"},
+            QueryType.CURRENT,
+            "rule_routed",
+        ),
+        (
+            StateBudgetMemMode.ORACLE_ROUTING,
+            _query("commute", QueryType.HISTORICAL, date(2026, 2, 1)),
+            {"m_drive"},
+            QueryType.HISTORICAL,
+            "oracle_routed",
+        ),
+    ],
+)
+def test_all_modes_use_real_scoped_dense_backend(
+    mode, query, expected_ids, expected_prediction, selection_policy
+) -> None:
+    method = _method(mode)
+    method.ingest(_memories())
+
+    result = method.retrieve(query, top_k=2)
+
+    assert {item.memory_id for item in result.retrieved_memories} == expected_ids
+    assert result.predicted_query_type is expected_prediction
+    assert result.metadata["selection_policy"] == selection_policy
+    assert result.metadata["core_retrieval"]["scoped_retrieval"] is True
+    assert (
+        result.metadata["core_retrieval"]["matched_allowed_memory_count"]
+        == len(expected_ids)
+    )
+    assert method.embedding_model is method.base_method.embedding_model
 
 
 @pytest.mark.parametrize("mutate", [False, True])
@@ -674,19 +727,17 @@ def test_predicted_query_type_reflects_only_actual_routing(
 
 
 def test_unified_runner_serializes_empty_and_fake_dense_results(
-    tmp_path, monkeypatch
+    tmp_path,
 ) -> None:
     versioning = _method(StateBudgetMemMode.VERSIONING)
     versioning.ingest(_memories())
-    _install_fake_dense(monkeypatch, versioning)
     versioning_query = _query("same query", QueryType.GENERAL)
     versioning_result = versioning.retrieve(versioning_query, top_k=1)
 
     dual_views = _method(StateBudgetMemMode.DUAL_VIEWS)
     dual_views.ingest(_memories())
-    _install_fake_dense(monkeypatch, dual_views)
     dual_query = _query("same query", QueryType.GENERAL)
-    dual_result = dual_views.retrieve(dual_query, top_k=1)
+    dual_result = dual_views.retrieve(dual_query, top_k=2)
 
     rule = _method(StateBudgetMemMode.RULE_ROUTING)
     rule.ingest(_memories())
@@ -720,7 +771,7 @@ def test_unified_runner_serializes_empty_and_fake_dense_results(
         assert not any("gold" in key for key in metadata)
     assert rows[0]["retrieved_memory_ids"] == ["m_metro"]
     assert rows[0]["predicted_query_type"] is None
-    assert rows[1]["retrieved_memory_ids"] == ["m_drive"]
+    assert set(rows[1]["retrieved_memory_ids"]) == {"m_drive", "m_metro"}
     assert rows[1]["predicted_query_type"] is None
     assert rows[2]["retrieved_memory_ids"] == []
     assert rows[2]["predicted_query_type"] == "GENERAL"

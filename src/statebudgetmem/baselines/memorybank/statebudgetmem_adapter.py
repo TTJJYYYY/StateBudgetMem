@@ -243,8 +243,13 @@ class StateBudgetMemDenseMethod:
         token_budget: int | None,
         mutate: bool,
     ) -> MethodResult:
-        del query, allowed_memory_ids, top_k, token_budget, mutate
-        raise RuntimeError("scoped MemoryBank retrieval interface is not available")
+        return self._base_method.retrieve_scoped(
+            query,
+            allowed_memory_ids=allowed_memory_ids,
+            top_k=top_k,
+            token_budget=token_budget,
+            mutate=mutate,
+        )
 
     def retrieve(
         self,

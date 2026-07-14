@@ -458,6 +458,9 @@ def test_memorybank_top_k_non_positive_returns_full_empty_metadata() -> None:
             "forgetting_threshold": 0.5,
             "retention_time_unit_hours": 24.0,
             "reinforcement_applied": True,
+            "scoped_retrieval": False,
+            "allowed_memory_count": None,
+            "matched_allowed_memory_count": None,
         }
     assert bank.index.search_calls == []
     assert piece.strength == 1.0
@@ -677,3 +680,152 @@ def test_memorybank_build_augmented_prompt_matches_paper_sections() -> None:
     summary_pos = prompt.index("【全局事件摘要】")
     query_pos = prompt.index("【用户当前问题】")
     assert memory_pos < portrait_pos < summary_pos < query_pos
+
+
+def _scoped_piece(memory_id, *, tags=None, last_accessed="2026-06-10 09:00"):
+    from statebudgetmem.baselines.memorybank.system import MemoryBank
+    from statebudgetmem.interfaces import MemoryPiece, MemoryType
+
+    timestamp = MemoryBank._parse_time(last_accessed)
+    piece = MemoryPiece(
+        content=f"memory {memory_id}",
+        timestamp=timestamp,
+        memory_type=MemoryType.DIALOG,
+        memory_id=memory_id,
+        last_accessed=timestamp,
+        tags=tags or [],
+    )
+    piece.strength = 10.0
+    return piece
+
+
+def test_memorybank_scoped_retrieval_filters_ids_and_reports_metadata() -> None:
+    from statebudgetmem.baselines.memorybank.system import MemoryBank
+
+    pieces = [_scoped_piece("m1"), _scoped_piece("m2"), _scoped_piece("m3")]
+    bank = _memorybank_with_pieces(pieces)
+
+    scoped = MemoryBank.retrieve_with_metadata(
+        bank,
+        "memory",
+        top_k=3,
+        current_time="2026-06-10 10:00",
+        reinforce=False,
+        allowed_memory_ids={"m2"},
+    )
+    unknown = MemoryBank.retrieve_with_metadata(
+        bank,
+        "memory",
+        top_k=3,
+        current_time="2026-06-10 10:00",
+        reinforce=False,
+        allowed_memory_ids={"m2", "missing"},
+    )
+    ordinary = MemoryBank.retrieve_with_metadata(
+        bank,
+        "memory",
+        top_k=3,
+        current_time="2026-06-10 10:00",
+        reinforce=False,
+        allowed_memory_ids=None,
+    )
+
+    assert [row["memory_id"] for row in scoped["memories"]] == ["m2"]
+    assert scoped["scoped_retrieval"] is True
+    assert scoped["allowed_memory_count"] == 1
+    assert scoped["matched_allowed_memory_count"] == 1
+    assert [row["memory_id"] for row in unknown["memories"]] == ["m2"]
+    assert unknown["allowed_memory_count"] == 2
+    assert unknown["matched_allowed_memory_count"] == 1
+    assert ordinary["scoped_retrieval"] is False
+    assert ordinary["allowed_memory_count"] is None
+    assert ordinary["matched_allowed_memory_count"] is None
+
+
+def test_memorybank_scoped_retrieval_searches_full_index_before_filtering() -> None:
+    from statebudgetmem.baselines.memorybank.system import MemoryBank
+
+    pieces = [
+        _scoped_piece("m_best"),
+        _scoped_piece("m_second"),
+        _scoped_piece("m_allowed"),
+    ]
+    bank = _memorybank_with_pieces(
+        pieces,
+        distances=[(0.99, 0), (0.8, 1), (0.2, 2)],
+    )
+
+    result = MemoryBank.retrieve_with_metadata(
+        bank,
+        "memory",
+        top_k=1,
+        candidate_k=1,
+        current_time="2026-06-10 10:00",
+        reinforce=False,
+        allowed_memory_ids={"m_allowed"},
+    )
+
+    assert bank.index.search_calls == [3]
+    assert [row["memory_id"] for row in result["memories"]] == ["m_allowed"]
+
+
+def test_memorybank_empty_scope_skips_embedding_search_and_reinforcement() -> None:
+    from statebudgetmem.baselines.memorybank.system import MemoryBank
+
+    piece = _scoped_piece("m1")
+    bank = _memorybank_with_pieces([piece])
+    before = (piece.strength, piece.last_accessed, piece.access_count, bank.access_count)
+
+    def fail_embedding(_text):
+        raise AssertionError("query embedding must be skipped for an empty scope")
+
+    bank._get_embedding = fail_embedding
+    result = MemoryBank.retrieve_with_metadata(
+        bank,
+        "memory",
+        top_k=1,
+        current_time="2026-06-10 10:00",
+        allowed_memory_ids=set(),
+    )
+
+    assert result["memories"] == []
+    assert result["scoped_retrieval"] is True
+    assert result["allowed_memory_count"] == 0
+    assert result["matched_allowed_memory_count"] == 0
+    assert result["reinforcement_applied"] is False
+    assert bank.index.search_calls == []
+    assert (piece.strength, piece.last_accessed, piece.access_count, bank.access_count) == before
+
+
+def test_memorybank_scope_intersects_filters_and_forgetting() -> None:
+    from statebudgetmem.baselines.memorybank.system import MemoryBank
+
+    blocked = _scoped_piece("blocked", tags=["blocked"])
+    allowed = _scoped_piece("allowed", tags=["allowed"])
+    bank = _memorybank_with_pieces([blocked, allowed])
+    filtered = MemoryBank.retrieve_with_metadata(
+        bank,
+        "memory",
+        top_k=2,
+        filters={"tags": ["allowed"]},
+        current_time="2026-06-10 10:00",
+        reinforce=False,
+        allowed_memory_ids={"blocked", "allowed"},
+    )
+
+    old = _scoped_piece("old", last_accessed="2026-06-01 10:00")
+    old.strength = 1.0
+    old_bank = _memorybank_with_pieces([old])
+    forgotten = MemoryBank.retrieve_with_metadata(
+        old_bank,
+        "memory",
+        top_k=1,
+        current_time="2026-06-10 10:00",
+        exclude_forgotten=True,
+        reinforce=False,
+        allowed_memory_ids={"old"},
+    )
+
+    assert [row["memory_id"] for row in filtered["memories"]] == ["allowed"]
+    assert forgotten["memories"] == []
+    assert forgotten["excluded_forgotten_memory_ids"] == ["old"]

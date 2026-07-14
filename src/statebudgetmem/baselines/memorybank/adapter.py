@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import time
+from collections.abc import Collection
 from datetime import date, datetime, time as datetime_time, timezone
 from typing import Any, Callable
 
@@ -76,6 +77,40 @@ class MemoryBankMethod:
         token_budget: int | None = None,
         mutate: bool = False,
     ) -> MethodResult:
+        return self._retrieve_impl(
+            query,
+            allowed_memory_ids=None,
+            top_k=top_k,
+            token_budget=token_budget,
+            mutate=mutate,
+        )
+
+    def retrieve_scoped(
+        self,
+        query: QueryRecord,
+        *,
+        allowed_memory_ids: Collection[str],
+        top_k: int,
+        token_budget: int | None = None,
+        mutate: bool = False,
+    ) -> MethodResult:
+        return self._retrieve_impl(
+            query,
+            allowed_memory_ids=frozenset(allowed_memory_ids),
+            top_k=top_k,
+            token_budget=token_budget,
+            mutate=mutate,
+        )
+
+    def _retrieve_impl(
+        self,
+        query: QueryRecord,
+        *,
+        allowed_memory_ids: Collection[str] | None,
+        top_k: int,
+        token_budget: int | None,
+        mutate: bool,
+    ) -> MethodResult:
         started = time.perf_counter()
         query_time = _date_timestamp(query.reference_time)
         core_result = self._bank.retrieve_with_metadata(
@@ -87,6 +122,7 @@ class MemoryBankMethod:
                 self._config.forgetting_enabled and self._config.exclude_forgotten
             ),
             reinforce=False,
+            allowed_memory_ids=allowed_memory_ids,
         )
         candidates = [
             _to_retrieved_memory(item, self._records[item["memory_id"]])
