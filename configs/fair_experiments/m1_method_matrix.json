@@ -1,0 +1,117 @@
+{
+  "experiment_id": "m1",
+  "matrix_version": "1.0",
+  "description": "Machine-readable method matrix for the M1 fair experiment.",
+  "dataset": {
+    "name": "temporal_challenge",
+    "version": "v1",
+    "path": "data/controlled/temporal_challenge_v1.jsonl",
+    "manifest_path": "data/controlled/manifests/temporal_challenge_v1.manifest.json",
+    "sha256": "f93331a2d93588fa8931efb4484fce577f5a5c9c4e679c51d4bb0192af6c8dd9"
+  },
+  "shared_parameters": {
+    "dataset_path": "data/controlled/temporal_challenge_v1.jsonl",
+    "top_k": 3,
+    "candidate_k": 20,
+    "token_budget": 32,
+    "random_seed": 42,
+    "repeat": 1,
+    "forgetting_enabled": true,
+    "forgetting_threshold": 0.3,
+    "exclude_forgotten": false,
+    "reinforcement_enabled": false,
+    "query_state_policy": "independent",
+    "token_counter_name": "memory_record_token_cost"
+  },
+  "dense_backend": {
+    "embedding_backend": "hash",
+    "embedding_model": "deterministic_hash_embedding",
+    "policy": "All MemoryBank-based methods must share this backend and the same FAISS, similarity, and scoring implementation."
+  },
+  "methods": [
+    {
+      "method_id": "tfidf_topk",
+      "display_name": "TF-IDF Top-K",
+      "backend_family": "lexical",
+      "registry_name": "tfidf_topk",
+      "status": "ready",
+      "main_config": "configs/fair_experiments/m1_tfidf_topk.yaml",
+      "ablation_config_glob": "configs/fair_experiments/ablations/m1_tfidf_topk_*.yaml"
+    },
+    {
+      "method_id": "memorybank_core",
+      "display_name": "MemoryBank Core",
+      "backend_family": "dense",
+      "registry_name": "memorybank_core",
+      "status": "ready",
+      "main_config": "configs/fair_experiments/m1_memorybank_core.yaml",
+      "ablation_config_glob": "configs/fair_experiments/ablations/m1_memorybank_core_*.yaml"
+    },
+    {
+      "method_id": "memorybank_versioning",
+      "display_name": "MemoryBank + Versioning",
+      "backend_family": "dense",
+      "registry_name": null,
+      "status": "pending",
+      "main_config": null,
+      "ablation_config_glob": null
+    },
+    {
+      "method_id": "memorybank_dual_views",
+      "display_name": "MemoryBank + Dual Views",
+      "backend_family": "dense",
+      "registry_name": null,
+      "status": "pending",
+      "main_config": null,
+      "ablation_config_glob": null
+    },
+    {
+      "method_id": "statebudgetmem_rule_routing",
+      "display_name": "StateBudgetMem Rule Routing",
+      "backend_family": "dense",
+      "registry_name": null,
+      "status": "pending",
+      "main_config": null,
+      "ablation_config_glob": null
+    },
+    {
+      "method_id": "statebudgetmem_oracle_routing",
+      "display_name": "StateBudgetMem Oracle Routing",
+      "backend_family": "dense",
+      "registry_name": null,
+      "status": "pending",
+      "main_config": null,
+      "ablation_config_glob": null
+    }
+  ],
+  "ablations": {
+    "mode": "single_variable",
+    "baseline": {
+      "top_k": 3,
+      "candidate_k": 20,
+      "token_budget": 32
+    },
+    "sweeps": {
+      "top_k": [1, 3, 5],
+      "candidate_k": [5, 20, 40],
+      "token_budget": [16, 32, 64]
+    },
+    "generated_nonbaseline_values": {
+      "top_k": [1, 5],
+      "candidate_k": [5, 40],
+      "token_budget": [16, 64]
+    }
+  },
+  "oracle_policy": {
+    "allowed_fields": [
+      "query_type"
+    ],
+    "forbidden_fields": [
+      "gold_memory_ids",
+      "gold_answer",
+      "expected_memory_ids",
+      "target_memory_ids"
+    ],
+    "description": "Oracle routing may select a view using the query type but must not use gold memory IDs or answer fields."
+  }
+}
