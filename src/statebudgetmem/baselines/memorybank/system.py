@@ -18,6 +18,7 @@ import time
 import json
 import pickle
 import hashlib
+from collections.abc import Collection
 from datetime import datetime
 try:  # optional dependency; required only by the FAISS MemoryBank class
     import numpy as np
@@ -401,14 +402,34 @@ class MemoryBank(MemorySystem):
         exclude_forgotten: bool = False,
         reinforce: bool = True,
         candidate_k: int | None = None,
+        allowed_memory_ids: Collection[str] | None = None,
     ) -> Dict[str, Any]:
         """Retrieve memories and expose forgetting/filtering metadata."""
+        normalized_allowed_ids = (
+            frozenset(allowed_memory_ids)
+            if allowed_memory_ids is not None
+            else None
+        )
         if top_k <= 0:
-            return self._empty_retrieval_metadata(exclude_forgotten, reinforce)
+            return self._empty_retrieval_metadata(
+                exclude_forgotten,
+                reinforce,
+                allowed_memory_ids=normalized_allowed_ids,
+            )
+        if normalized_allowed_ids == frozenset():
+            return self._empty_retrieval_metadata(
+                exclude_forgotten,
+                False,
+                allowed_memory_ids=normalized_allowed_ids,
+            )
 
         self._ensure_index()
         if self.index.ntotal == 0:
-            return self._empty_retrieval_metadata(exclude_forgotten, reinforce)
+            return self._empty_retrieval_metadata(
+                exclude_forgotten,
+                False if normalized_allowed_ids is not None else reinforce,
+                allowed_memory_ids=normalized_allowed_ids,
+            )
 
         now = self._parse_time(current_time)
 
@@ -425,9 +446,13 @@ class MemoryBank(MemorySystem):
         retention_time_unit_hours = self.decay_interval_sec / 3600.0
         if candidate_k is not None and candidate_k <= 0:
             raise ValueError("candidate_k must be positive or None")
-        search_k = min(
-            candidate_k if candidate_k is not None else max(top_k * 3, top_k),
-            self.index.ntotal,
+        search_k = (
+            self.index.ntotal
+            if normalized_allowed_ids is not None
+            else min(
+                candidate_k if candidate_k is not None else max(top_k * 3, top_k),
+                self.index.ntotal,
+            )
         )
         candidates: List[Dict[str, Any]] = []
         ranking_pool: List[Dict[str, Any]] = []
@@ -447,6 +472,11 @@ class MemoryBank(MemorySystem):
                     continue
                 mem = self.memories_by_id.get(mid)
                 if not mem:
+                    continue
+                if (
+                    normalized_allowed_ids is not None
+                    and mid not in normalized_allowed_ids
+                ):
                     continue
                 if allowed_memory_types and mem.memory_type.value not in allowed_memory_types:
                     continue
@@ -523,8 +553,23 @@ class MemoryBank(MemorySystem):
             "exclude_forgotten": exclude_forgotten,
             "forgetting_threshold": self.forgetting_threshold,
             "retention_time_unit_hours": retention_time_unit_hours,
-            "reinforcement_applied": reinforce,
+            "reinforcement_applied": (
+                reinforce
+                if normalized_allowed_ids is None
+                else bool(reinforce and selected)
+            ),
             "candidate_k": candidate_k,
+            "scoped_retrieval": normalized_allowed_ids is not None,
+            "allowed_memory_count": (
+                len(normalized_allowed_ids)
+                if normalized_allowed_ids is not None
+                else None
+            ),
+            "matched_allowed_memory_count": (
+                len(normalized_allowed_ids.intersection(self.memories_by_id))
+                if normalized_allowed_ids is not None
+                else None
+            ),
         }
 
     def reinforce_memory_ids(
@@ -597,8 +642,17 @@ class MemoryBank(MemorySystem):
         }
 
     def _empty_retrieval_metadata(
-        self, exclude_forgotten: bool, reinforce: bool = True
+        self,
+        exclude_forgotten: bool,
+        reinforce: bool = True,
+        *,
+        allowed_memory_ids: Collection[str] | None = None,
     ) -> Dict[str, Any]:
+        normalized_allowed_ids = (
+            frozenset(allowed_memory_ids)
+            if allowed_memory_ids is not None
+            else None
+        )
         return {
             "memories": [],
             "forgotten_memory_ids": [],
@@ -609,6 +663,17 @@ class MemoryBank(MemorySystem):
             "forgetting_threshold": self.forgetting_threshold,
             "retention_time_unit_hours": self.decay_interval_sec / 3600.0,
             "reinforcement_applied": reinforce,
+            "scoped_retrieval": normalized_allowed_ids is not None,
+            "allowed_memory_count": (
+                len(normalized_allowed_ids)
+                if normalized_allowed_ids is not None
+                else None
+            ),
+            "matched_allowed_memory_count": (
+                len(normalized_allowed_ids.intersection(self.memories_by_id))
+                if normalized_allowed_ids is not None
+                else None
+            ),
         }
 
     # ── 核心接口：update ──

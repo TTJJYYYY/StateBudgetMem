@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import inspect
+import json
 from datetime import date, datetime, timezone
 from pathlib import Path
 
@@ -13,6 +15,7 @@ from statebudgetmem.baselines.memorybank.adapter import (
     memory_record_to_piece,
 )
 from statebudgetmem.core.experiment import ExperimentConfig, MethodBuildContext
+from statebudgetmem.core.method import MemoryMethod
 from statebudgetmem.schemas.records import MemoryRecord, MemoryStatus, QueryRecord, QueryType
 
 
@@ -66,6 +69,122 @@ def test_memory_record_mapping_preserves_identity_and_temporal_fields() -> None:
     assert piece.confidence == record.confidence
     assert piece.validity_period is not None
     assert piece.last_accessed == piece.timestamp
+
+
+def test_retrieve_scoped_signature_is_keyword_only_and_stable() -> None:
+    signature = inspect.signature(MemoryBankMethod.retrieve_scoped)
+
+    assert inspect.signature(MemoryBankMethod.retrieve) == inspect.signature(
+        MemoryMethod.retrieve
+    )
+    assert signature.parameters["allowed_memory_ids"].kind is inspect.Parameter.KEYWORD_ONLY
+    assert signature.parameters["top_k"].kind is inspect.Parameter.KEYWORD_ONLY
+    assert signature.parameters["token_budget"].default is None
+    assert signature.parameters["mutate"].default is False
+
+
+@pytest.mark.parametrize(
+    "allowed_memory_ids",
+    [
+        {"m2"},
+        frozenset({"m2"}),
+        ["m2"],
+        ("m2",),
+    ],
+)
+def test_retrieve_scoped_accepts_collections_and_only_returns_allowed_ids(
+    allowed_memory_ids,
+) -> None:
+    method = MemoryBankMethod(_context())
+    method.ingest(
+        [
+            _memory("m1", "spicy food"),
+            _memory("m2", "running shoes"),
+            _memory("m3", "quiet library"),
+        ]
+    )
+    bank = method.bank
+    encoder = method.embedding_model
+    ordinary = method.retrieve(_query(), top_k=3, mutate=False)
+
+    result = method.retrieve_scoped(
+        _query(),
+        allowed_memory_ids=allowed_memory_ids,
+        top_k=3,
+        mutate=False,
+    )
+
+    assert method.bank is bank
+    assert method.embedding_model is encoder
+    assert ordinary.metadata["core_retrieval"]["scoped_retrieval"] is False
+    assert [item.memory_id for item in result.retrieved_memories] == ["m2"]
+    core = result.metadata["core_retrieval"]
+    assert core["scoped_retrieval"] is True
+    assert core["allowed_memory_count"] == 1
+    assert core["matched_allowed_memory_count"] == 1
+    json.dumps(result.model_dump(mode="json"), sort_keys=True)
+
+
+def test_retrieve_scoped_empty_missing_and_budgeted_results_are_empty() -> None:
+    method = MemoryBankMethod(_context(reinforcement_enabled=True))
+    method.ingest([_memory("m1", "spicy food", token_cost=5)])
+    piece = method.bank.memories_by_id["m1"]
+    before = (piece.strength, piece.last_accessed, piece.access_count, method.bank.access_count)
+
+    empty = method.retrieve_scoped(
+        _query(), allowed_memory_ids=set(), top_k=1, mutate=True
+    )
+    missing = method.retrieve_scoped(
+        _query(), allowed_memory_ids={"missing"}, top_k=1, mutate=True
+    )
+    budgeted = method.retrieve_scoped(
+        _query(),
+        allowed_memory_ids={"m1"},
+        top_k=1,
+        token_budget=4,
+        mutate=True,
+    )
+
+    for result in (empty, missing, budgeted):
+        assert result.retrieved_memories == []
+        assert result.total_token_cost == 0
+        assert result.metadata["reinforcement_applied"] is False
+    assert (piece.strength, piece.last_accessed, piece.access_count, method.bank.access_count) == before
+
+
+def test_retrieve_scoped_reinforces_only_final_budget_selection() -> None:
+    method = MemoryBankMethod(_context(reinforcement_enabled=True))
+    method.ingest(
+        [
+            _memory("m1", "spicy food", token_cost=5),
+            _memory("m2", "spicy restaurant", token_cost=5),
+        ]
+    )
+    before = {
+        memory_id: (piece.strength, piece.access_count)
+        for memory_id, piece in method.bank.memories_by_id.items()
+    }
+
+    result = method.retrieve_scoped(
+        _query(),
+        allowed_memory_ids={"m1", "m2"},
+        top_k=1,
+        token_budget=5,
+        mutate=True,
+    )
+
+    assert len(result.retrieved_memories) == 1
+    selected_id = result.retrieved_memories[0].memory_id
+    for memory_id, piece in method.bank.memories_by_id.items():
+        old_strength, old_access_count = before[memory_id]
+        if memory_id == selected_id:
+            assert piece.strength == old_strength + 1
+            assert piece.access_count == old_access_count + 1
+        else:
+            assert (piece.strength, piece.access_count) == (
+                old_strength,
+                old_access_count,
+            )
 
 
 def test_adapter_respects_top_k_token_budget_and_reference_time() -> None:
