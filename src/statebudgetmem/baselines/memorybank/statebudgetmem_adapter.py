@@ -1,8 +1,8 @@
-"""Eligibility-only StateBudgetMem adapter over the shared MemoryBank method.
+"""StateBudgetMem dense adapter over the shared scoped MemoryBank backend.
 
-The current MemoryBankMethod does not yet expose scoped retrieval.  This module
-therefore owns only version/view/routing decisions and keeps the unavailable
-dense call behind one method.  It must not fall back to retrieve-then-filter.
+This module uses the existing Versioning, Views, and Routing components to
+determine eligible memory IDs, then delegates dense retrieval, scoring,
+forgetting, token budgeting, and reinforcement to MemoryBankMethod.
 """
 
 from __future__ import annotations
