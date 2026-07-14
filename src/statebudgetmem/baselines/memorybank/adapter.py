@@ -130,8 +130,9 @@ class MemoryBankMethod:
             if item["memory_id"] in self._records
         ]
         selected = _select_with_budget(candidates, top_k, token_budget)
-        reinforce = self._config.reinforcement_enabled and mutate
-        if reinforce:
+        reinforcement_requested = self._config.reinforcement_enabled and mutate
+        reinforcement_applied = bool(reinforcement_requested and selected)
+        if reinforcement_applied:
             self._bank.reinforce_memory_ids(
                 [item.memory_id for item in selected], current_time=query_time
             )
@@ -152,7 +153,7 @@ class MemoryBankMethod:
                     self._config.forgetting_enabled
                     and self._config.exclude_forgotten
                 ),
-                "reinforcement_applied": reinforce,
+                "reinforcement_applied": reinforcement_applied,
                 "query_time": query.reference_time.isoformat(),
                 "source_retriever": "MemoryBank/FAISS IndexFlatIP",
                 "core_retrieval": core_result,
