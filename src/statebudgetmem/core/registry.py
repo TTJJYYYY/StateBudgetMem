@@ -41,6 +41,10 @@ def default_method_registry() -> MethodRegistry:
     registry = MethodRegistry()
     registry.register("tfidf_topk", lambda _context: TfidfMemoryMethod())
     registry.register("memorybank_core", _create_memorybank_method)
+    registry.register("memorybank_versioning", _create_memorybank_versioning)
+    registry.register("memorybank_dual_views", _create_memorybank_dual_views)
+    registry.register("statebudgetmem_rule", _create_statebudgetmem_rule)
+    registry.register("statebudgetmem_oracle", _create_statebudgetmem_oracle)
     return registry
 
 
@@ -48,3 +52,55 @@ def _create_memorybank_method(context: MethodBuildContext) -> MemoryMethod:
     from statebudgetmem.baselines.memorybank.adapter import MemoryBankMethod
 
     return MemoryBankMethod(context)
+
+
+def _create_memorybank_versioning(context: MethodBuildContext) -> MemoryMethod:
+    from statebudgetmem.baselines.memorybank.statebudgetmem_adapter import (
+        StateBudgetMemDenseMethod,
+        StateBudgetMemMode,
+    )
+
+    return StateBudgetMemDenseMethod(
+        context,
+        method_name="memorybank_versioning",
+        mode=StateBudgetMemMode.VERSIONING,
+    )
+
+
+def _create_memorybank_dual_views(context: MethodBuildContext) -> MemoryMethod:
+    from statebudgetmem.baselines.memorybank.statebudgetmem_adapter import (
+        StateBudgetMemDenseMethod,
+        StateBudgetMemMode,
+    )
+
+    return StateBudgetMemDenseMethod(
+        context,
+        method_name="memorybank_dual_views",
+        mode=StateBudgetMemMode.DUAL_VIEWS,
+    )
+
+
+def _create_statebudgetmem_rule(context: MethodBuildContext) -> MemoryMethod:
+    from statebudgetmem.baselines.memorybank.statebudgetmem_adapter import (
+        StateBudgetMemDenseMethod,
+        StateBudgetMemMode,
+    )
+
+    return StateBudgetMemDenseMethod(
+        context,
+        method_name="statebudgetmem_rule",
+        mode=StateBudgetMemMode.RULE_ROUTING,
+    )
+
+
+def _create_statebudgetmem_oracle(context: MethodBuildContext) -> MemoryMethod:
+    from statebudgetmem.baselines.memorybank.statebudgetmem_adapter import (
+        StateBudgetMemDenseMethod,
+        StateBudgetMemMode,
+    )
+
+    return StateBudgetMemDenseMethod(
+        context,
+        method_name="statebudgetmem_oracle",
+        mode=StateBudgetMemMode.ORACLE_ROUTING,
+    )
