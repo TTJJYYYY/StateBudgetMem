@@ -48,8 +48,7 @@ def _run_retrieve(method_name: str, ctx: MethodBuildContext, **kw):
     method = registry.create(method_name, ctx)
     scenarios = load_scenarios(SMOKE_DATASET)
     method.reset()
-    for mem in scenarios[0].memories:
-        method.ingest([mem])
+    method.ingest(scenarios[0].memories)
     query = scenarios[0].queries[0].model_copy(update={
         "gold_relevant_memory_ids": [],
         "gold_valid_memory_ids": [],
@@ -150,8 +149,7 @@ def test_independent_queries_are_isolated(method_name: str):
     ids_run1 = []
     for q in queries:
         method.reset()
-        for mem in scenarios[0].memories:
-            method.ingest([mem])
+        method.ingest(scenarios[0].memories)
         r = method.retrieve(
             q.model_copy(update={"gold_relevant_memory_ids": [], "gold_valid_memory_ids": [], "gold_stale_memory_ids": []}),
             top_k=ctx.experiment.top_k,
@@ -163,8 +161,7 @@ def test_independent_queries_are_isolated(method_name: str):
     ids_run2 = []
     for q in reversed(queries):
         method.reset()
-        for mem in scenarios[0].memories:
-            method.ingest([mem])
+        method.ingest(scenarios[0].memories)
         r = method.retrieve(
             q.model_copy(update={"gold_relevant_memory_ids": [], "gold_valid_memory_ids": [], "gold_stale_memory_ids": []}),
             top_k=ctx.experiment.top_k,
