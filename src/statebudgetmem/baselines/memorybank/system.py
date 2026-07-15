@@ -414,12 +414,14 @@ class MemoryBank(MemorySystem):
             return self._empty_retrieval_metadata(
                 exclude_forgotten,
                 reinforce,
+                candidate_k=candidate_k,
                 allowed_memory_ids=normalized_allowed_ids,
             )
         if normalized_allowed_ids == frozenset():
             return self._empty_retrieval_metadata(
                 exclude_forgotten,
                 False,
+                candidate_k=candidate_k,
                 allowed_memory_ids=normalized_allowed_ids,
             )
 
@@ -428,6 +430,7 @@ class MemoryBank(MemorySystem):
             return self._empty_retrieval_metadata(
                 exclude_forgotten,
                 False if normalized_allowed_ids is not None else reinforce,
+                candidate_k=candidate_k,
                 allowed_memory_ids=normalized_allowed_ids,
             )
 
@@ -458,6 +461,9 @@ class MemoryBank(MemorySystem):
         ranking_pool: List[Dict[str, Any]] = []
         forgotten_memory_ids: List[str] = []
         excluded_ids: List[str] = []
+        raw_candidate_count_before_scope = 0
+        candidate_count_after_scope = 0
+        candidate_count_after_filters = 0
         candidate_count_before_forgetting = 0
         candidate_count_after_forgetting = 0
 
@@ -466,6 +472,9 @@ class MemoryBank(MemorySystem):
 
             raw_candidates: List[Tuple[MemoryPiece, float]] = []
             seen_ids: set[str] = set()
+            raw_candidate_count_before_scope = 0
+            candidate_count_after_scope = 0
+            candidate_count_after_filters = 0
             for dist, idx in zip(distances[0], indices[0]):
                 mid = self.faiss_id_to_mid.get(int(idx))
                 if not mid or mid in seen_ids:
@@ -473,17 +482,20 @@ class MemoryBank(MemorySystem):
                 mem = self.memories_by_id.get(mid)
                 if not mem:
                     continue
+                raw_candidate_count_before_scope += 1
                 if (
                     normalized_allowed_ids is not None
                     and mid not in normalized_allowed_ids
                 ):
                     continue
+                candidate_count_after_scope += 1
                 if allowed_memory_types and mem.memory_type.value not in allowed_memory_types:
                     continue
                 if max_timestamp is not None and mem.timestamp > max_timestamp:
                     continue
                 raw_candidates.append((mem, float(dist)))
                 seen_ids.add(mid)
+            candidate_count_after_filters = len(raw_candidates)
 
             if active_filters:
                 filtered = filter_memories([mem for mem, _ in raw_candidates], active_filters)
@@ -493,6 +505,7 @@ class MemoryBank(MemorySystem):
                     for mem, dist in raw_candidates
                     if mem.memory_id in allowed_ids
                 ]
+                candidate_count_after_filters = len(raw_candidates)
 
             candidates = [
                 self._retrieval_candidate_row(
@@ -559,6 +572,7 @@ class MemoryBank(MemorySystem):
                 else bool(reinforce and selected)
             ),
             "candidate_k": candidate_k,
+            "search_k": search_k,
             "scoped_retrieval": normalized_allowed_ids is not None,
             "allowed_memory_count": (
                 len(normalized_allowed_ids)
@@ -570,6 +584,9 @@ class MemoryBank(MemorySystem):
                 if normalized_allowed_ids is not None
                 else None
             ),
+            "raw_candidate_count_before_scope": raw_candidate_count_before_scope,
+            "candidate_count_after_scope": candidate_count_after_scope,
+            "candidate_count_after_filters": candidate_count_after_filters,
         }
 
     def reinforce_memory_ids(
@@ -646,6 +663,7 @@ class MemoryBank(MemorySystem):
         exclude_forgotten: bool,
         reinforce: bool = True,
         *,
+        candidate_k: int | None = None,
         allowed_memory_ids: Collection[str] | None = None,
     ) -> Dict[str, Any]:
         normalized_allowed_ids = (
@@ -663,6 +681,8 @@ class MemoryBank(MemorySystem):
             "forgetting_threshold": self.forgetting_threshold,
             "retention_time_unit_hours": self.decay_interval_sec / 3600.0,
             "reinforcement_applied": reinforce,
+            "candidate_k": candidate_k,
+            "search_k": 0,
             "scoped_retrieval": normalized_allowed_ids is not None,
             "allowed_memory_count": (
                 len(normalized_allowed_ids)
@@ -674,6 +694,9 @@ class MemoryBank(MemorySystem):
                 if normalized_allowed_ids is not None
                 else None
             ),
+            "raw_candidate_count_before_scope": 0,
+            "candidate_count_after_scope": 0,
+            "candidate_count_after_filters": 0,
         }
 
     # ── 核心接口：update ──

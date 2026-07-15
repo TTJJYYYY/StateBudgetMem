@@ -455,13 +455,18 @@ def test_memorybank_top_k_non_positive_returns_full_empty_metadata() -> None:
         "candidate_count_before_forgetting": 0,
         "candidate_count_after_forgetting": 0,
         "exclude_forgotten": True,
-            "forgetting_threshold": 0.5,
-            "retention_time_unit_hours": 24.0,
-            "reinforcement_applied": True,
-            "scoped_retrieval": False,
-            "allowed_memory_count": None,
-            "matched_allowed_memory_count": None,
-        }
+        "forgetting_threshold": 0.5,
+        "retention_time_unit_hours": 24.0,
+        "reinforcement_applied": True,
+        "candidate_k": None,
+        "search_k": 0,
+        "scoped_retrieval": False,
+        "allowed_memory_count": None,
+        "matched_allowed_memory_count": None,
+        "raw_candidate_count_before_scope": 0,
+        "candidate_count_after_scope": 0,
+        "candidate_count_after_filters": 0,
+    }
     assert bank.index.search_calls == []
     assert piece.strength == 1.0
     assert piece.access_count == 0
@@ -734,6 +739,10 @@ def test_memorybank_scoped_retrieval_filters_ids_and_reports_metadata() -> None:
     assert scoped["scoped_retrieval"] is True
     assert scoped["allowed_memory_count"] == 1
     assert scoped["matched_allowed_memory_count"] == 1
+    assert scoped["search_k"] == bank.index.ntotal
+    assert scoped["raw_candidate_count_before_scope"] >= 1
+    assert scoped["candidate_count_after_scope"] == 1
+    assert scoped["candidate_count_after_filters"] == 1
     assert [row["memory_id"] for row in unknown["memories"]] == ["m2"]
     assert unknown["allowed_memory_count"] == 2
     assert unknown["matched_allowed_memory_count"] == 1
