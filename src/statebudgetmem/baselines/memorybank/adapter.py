@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import time
+from collections.abc import Collection
 from datetime import date, datetime, time as datetime_time, timezone
 from typing import Any, Callable
 
@@ -76,6 +77,40 @@ class MemoryBankMethod:
         token_budget: int | None = None,
         mutate: bool = False,
     ) -> MethodResult:
+        return self._retrieve_impl(
+            query,
+            allowed_memory_ids=None,
+            top_k=top_k,
+            token_budget=token_budget,
+            mutate=mutate,
+        )
+
+    def retrieve_scoped(
+        self,
+        query: QueryRecord,
+        *,
+        allowed_memory_ids: Collection[str],
+        top_k: int,
+        token_budget: int | None = None,
+        mutate: bool = False,
+    ) -> MethodResult:
+        return self._retrieve_impl(
+            query,
+            allowed_memory_ids=frozenset(allowed_memory_ids),
+            top_k=top_k,
+            token_budget=token_budget,
+            mutate=mutate,
+        )
+
+    def _retrieve_impl(
+        self,
+        query: QueryRecord,
+        *,
+        allowed_memory_ids: Collection[str] | None,
+        top_k: int,
+        token_budget: int | None,
+        mutate: bool,
+    ) -> MethodResult:
         started = time.perf_counter()
         query_time = _date_timestamp(query.reference_time)
         core_result = self._bank.retrieve_with_metadata(
@@ -87,6 +122,7 @@ class MemoryBankMethod:
                 self._config.forgetting_enabled and self._config.exclude_forgotten
             ),
             reinforce=False,
+            allowed_memory_ids=allowed_memory_ids,
         )
         candidates = [
             _to_retrieved_memory(item, self._records[item["memory_id"]])
@@ -94,8 +130,9 @@ class MemoryBankMethod:
             if item["memory_id"] in self._records
         ]
         selected = _select_with_budget(candidates, top_k, token_budget)
-        reinforce = self._config.reinforcement_enabled and mutate
-        if reinforce:
+        reinforcement_requested = self._config.reinforcement_enabled and mutate
+        reinforcement_applied = bool(reinforcement_requested and selected)
+        if reinforcement_applied:
             self._bank.reinforce_memory_ids(
                 [item.memory_id for item in selected], current_time=query_time
             )
@@ -116,7 +153,7 @@ class MemoryBankMethod:
                     self._config.forgetting_enabled
                     and self._config.exclude_forgotten
                 ),
-                "reinforcement_applied": reinforce,
+                "reinforcement_applied": reinforcement_applied,
                 "query_time": query.reference_time.isoformat(),
                 "source_retriever": "MemoryBank/FAISS IndexFlatIP",
                 "core_retrieval": core_result,

@@ -47,16 +47,86 @@ def test_experiment_config_rejects_empty_duplicate_or_invalid_values() -> None:
         ResourceMetrics(total_token_cost=-1)
 
 
-def test_default_registry_only_exposes_frozen_smoke_adapter() -> None:
+def test_default_registry_exposes_all_dense_method_variants() -> None:
     registry = default_method_registry()
     context = MethodBuildContext(
-        experiment=ExperimentConfig(dataset_path=Path("fixture.jsonl")),
+        experiment=ExperimentConfig(
+            dataset_path=Path("fixture.jsonl"),
+            embedding_backend="hash",
+            embedding_model="deterministic_hash_embedding",
+        ),
         work_dir=Path("results/test"),
     )
-    assert registry.names() == ("memorybank_core", "tfidf_topk")
+    assert registry.names() == (
+        "memorybank_core",
+        "memorybank_dual_views",
+        "memorybank_versioning",
+        "statebudgetmem_oracle",
+        "statebudgetmem_rule",
+        "tfidf_topk",
+    )
     assert registry.create("tfidf_topk", context).name == "tfidf_topk"
-    with pytest.raises(ValueError, match="available methods"):
+    assert registry.create("memorybank_core", context).name == "memorybank_core"
+    with pytest.raises(ValueError, match="available methods") as caught:
         registry.create("not_registered", context)
+    for method_name in registry.names():
+        assert method_name in str(caught.value)
+
+
+@pytest.mark.parametrize(
+    "method_name, mode_name",
+    [
+        ("memorybank_versioning", "VERSIONING"),
+        ("memorybank_dual_views", "DUAL_VIEWS"),
+        ("statebudgetmem_rule", "RULE_ROUTING"),
+        ("statebudgetmem_oracle", "ORACLE_ROUTING"),
+    ],
+)
+def test_default_registry_creates_statebudgetmem_dense_variants(
+    method_name: str, mode_name: str
+) -> None:
+    from statebudgetmem.baselines.memorybank.statebudgetmem_adapter import (
+        StateBudgetMemDenseMethod,
+        StateBudgetMemMode,
+    )
+
+    registry = default_method_registry()
+    context = MethodBuildContext(
+        experiment=ExperimentConfig(
+            dataset_path=Path("fixture.jsonl"),
+            embedding_backend="hash",
+            embedding_model="deterministic_hash_embedding",
+        ),
+        work_dir=Path("results/test"),
+    )
+
+    method = registry.create(method_name, context)
+
+    assert isinstance(method, StateBudgetMemDenseMethod)
+    assert method.name == method_name
+    assert method.mode is StateBudgetMemMode[mode_name]
+    assert method.base_method.name == "memorybank_core"
+    assert method.embedding_model is method.base_method.embedding_model
+
+
+def test_default_registry_creates_isolated_dense_method_instances() -> None:
+    registry = default_method_registry()
+    context = MethodBuildContext(
+        experiment=ExperimentConfig(
+            dataset_path=Path("fixture.jsonl"),
+            embedding_backend="hash",
+            embedding_model="deterministic_hash_embedding",
+        ),
+        work_dir=Path("results/test"),
+    )
+
+    first = registry.create("memorybank_versioning", context)
+    second = registry.create("memorybank_versioning", context)
+
+    assert first is not second
+    assert first.base_method is not second.base_method
+    assert first.bank is not second.bank
+    assert first.view_manager is not second.view_manager
 
 
 def test_factory_receives_complete_method_build_context() -> None:
