@@ -56,18 +56,30 @@ from statebudgetmem.baselines.memorybank.staleness import (
 from statebudgetmem.baselines.memorybank.system import MemoryBank, TFIDFMemoryBank
 
 
-def __getattr__(name: str):
+def __getattr__(name: str) -> object:
     """Keep the dense adapter lazy so base imports do not require NumPy/FAISS."""
     if name == "MemoryBankMethod":
         from statebudgetmem.baselines.memorybank.adapter import MemoryBankMethod
 
         return MemoryBankMethod
+    if name in {"StateBudgetMemDenseMethod", "StateBudgetMemMode"}:
+        from statebudgetmem.baselines.memorybank.statebudgetmem_adapter import (
+            StateBudgetMemDenseMethod,
+            StateBudgetMemMode,
+        )
+
+        return {
+            "StateBudgetMemDenseMethod": StateBudgetMemDenseMethod,
+            "StateBudgetMemMode": StateBudgetMemMode,
+        }[name]
     raise AttributeError(name)
 
 __all__ = [
     "MemoryBank",
     "TFIDFMemoryBank",
     "MemoryBankMethod",
+    "StateBudgetMemDenseMethod",
+    "StateBudgetMemMode",
     "BaselineAgent",
     "MemoryAugmentedAgent",
     "History",
