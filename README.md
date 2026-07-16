@@ -223,6 +223,28 @@ runs fully offline and calls the current TF-IDF baseline, deterministic
 versioning example, flat/current/dual views experiment, and rule-based routing
 examples in one command.
 
+### Optional local LLM answerer
+
+Template Answer remains the default answer path for demos and tests:
+
+```powershell
+.venv\Scripts\python.exe tools\demo\run_minimal_memorybank_dialog_demo.py --answerer template
+.venv\Scripts\python.exe tools\demo\build_final_showcase.py
+```
+
+To try an already installed Ollama model locally:
+
+```powershell
+.venv\Scripts\python.exe tools\demo\run_minimal_memorybank_dialog_demo.py --answerer local_llm --local-llm-model <model_name>
+.venv\Scripts\python.exe tools\demo\build_final_showcase.py --answerer local_llm --local-llm-model <model_name>
+```
+
+The adapter calls only `http://localhost:11434/api/generate` by default. It does
+not download models and does not call a cloud API. If Ollama or the selected
+model is unavailable, the demo falls back to Template Answer and records the
+reason in the output JSON. Local LLM answers are demo/pilot material, not formal
+fair-comparison conclusions.
+
 ### Optional commands
 
 | Purpose | Command | Notes |
