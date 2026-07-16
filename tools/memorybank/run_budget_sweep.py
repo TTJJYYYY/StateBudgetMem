@@ -977,10 +977,33 @@ def generate_figures(
     axes[0].plot(x, [row["mean_retrieval_latency_ms"] for row in memory_rows], marker="o", label="Mean latency")
     axes[0].plot(x, [row["p95_retrieval_latency_ms"] for row in memory_rows], marker="s", label="P95 latency")
     axes[0].set(xlabel="Memory count", ylabel="Latency (ms)"); axes[0].grid(alpha=0.3); axes[0].legend()
-    axes[1].plot(x, [row["mean_estimated_memory_storage_bytes"] for row in memory_rows], marker="o", label="Estimated memory storage")
+    storage_lines = axes[1].plot(
+        x,
+        [row["mean_estimated_memory_storage_bytes"] for row in memory_rows],
+        color="tab:blue",
+        marker="o",
+        label="Estimated memory storage",
+    )
+    resource_lines = list(storage_lines)
+    resource_axis = axes[1]
     if all(row["mean_retrieval_rss_peak_bytes"] is not None for row in memory_rows):
-        axes[1].plot(x, [row["mean_retrieval_rss_peak_bytes"] for row in memory_rows], marker="s", label="Process RSS")
-    axes[1].set(xlabel="Memory count", ylabel="Bytes"); axes[1].grid(alpha=0.3); axes[1].legend()
+        resource_axis = axes[1].twinx()
+        resource_lines.extend(
+            resource_axis.plot(
+                x,
+                [row["mean_retrieval_rss_peak_bytes"] for row in memory_rows],
+                color="tab:orange",
+                marker="s",
+                label="Process RSS",
+            )
+        )
+        resource_axis.set_ylabel("Process RSS (bytes)", color="tab:orange")
+    axes[1].set(
+        xlabel="Memory count",
+        ylabel="Estimated storage (bytes)",
+    )
+    axes[1].grid(alpha=0.3)
+    axes[1].legend(resource_lines, [line.get_label() for line in resource_lines])
     fig.suptitle(f"Memory-count resources ({format_anchor(memory_anchor)})"); fig.tight_layout(); fig.savefig(paths[3], dpi=170); plt.close(fig)
 
     fig, axis = plt.subplots(figsize=(7.0, 4.4))

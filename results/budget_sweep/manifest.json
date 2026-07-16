@@ -1,0 +1,116 @@
+{
+  "cloud_api_used": false,
+  "command": ".venv\\Scripts\\python.exe tools\\memorybank\\run_budget_sweep.py --results-root results/budget_sweep --run-id budget_sweep_20260716 --token-budget 64 128 256 512 --top-k 1 3 5 --candidate-k 5 10 20 --memory-count 100 500 1000 2000 --forgetting-threshold 0.3 --repeat 3 --seed 42 --embedding-dim 32 --current-time \"2026-07-10 10:00\"",
+  "configuration_count": 144,
+  "created_at": "2026-07-16T16:19:57.095898+00:00",
+  "current_time": "2026-07-10 10:00",
+  "dataset_source": "synthetic_memorybank_budget_probe",
+  "embedding_backend": "hash",
+  "embedding_dim": 32,
+  "forgetting_threshold": [
+    0.3
+  ],
+  "git_commit": "cae2b271dc66774c17482d8fccc7c87244d1a0d2",
+  "git_commit_error": null,
+  "grid": {
+    "candidate_k": [
+      5,
+      10,
+      20
+    ],
+    "forgetting_threshold": [
+      0.3
+    ],
+    "memory_count": [
+      100,
+      500,
+      1000,
+      2000
+    ],
+    "probe_count": 3,
+    "repeat": 3,
+    "token_budget": [
+      64,
+      128,
+      256,
+      512
+    ],
+    "top_k": [
+      1,
+      3,
+      5
+    ]
+  },
+  "limitations": [
+    "Only three deterministic synthetic probes are used.",
+    "Hash embedding is not MiniLM or another semantic production encoder.",
+    "The token metric is a deterministic proxy, not a real tokenizer.",
+    "Template-answer keyword coverage is not LLM answer quality.",
+    "RSS includes the full Python process and is affected by allocator and OS behavior.",
+    "Latency is specific to the local machine and run conditions.",
+    "This sweep does not compare the overall quality of the four StateBudgetMem methods.",
+    "Formal method conclusions remain in results/fair_comparison."
+  ],
+  "llm_called": false,
+  "local_only": true,
+  "output_files": [
+    {
+      "path": "results/budget_sweep/budget_sweep_rows.csv",
+      "sha256": "331ec037b82939505e66467580051254535a53ddd23abde57f85af97cdb5078d",
+      "size_bytes": 376541
+    },
+    {
+      "path": "results/budget_sweep/budget_sweep_rows.json",
+      "sha256": "8408a9782d0939d8c258619a86781e082d9951cb9ee248560a432f16423b0a5f",
+      "size_bytes": 1729160
+    },
+    {
+      "path": "results/budget_sweep/budget_sweep_summary.csv",
+      "sha256": "0f87ec0a4b49bcebf3e80ac876161c3a02d281896bd476444319d805ecfb86ce",
+      "size_bytes": 32422
+    },
+    {
+      "path": "results/budget_sweep/budget_sweep_summary.json",
+      "sha256": "cd13a3fb8f639bccc40a6ca762d2819520fa7d9329c0a921421724e6e1e81990",
+      "size_bytes": 174942
+    },
+    {
+      "path": "results/budget_sweep/resource_metrics.json",
+      "sha256": "d97052f43c0e452ac099a2f11ae3086dcd310c978389333403cec7bf71870f11",
+      "size_bytes": 2116
+    },
+    {
+      "path": "results/budget_sweep/figures/token_budget_quality.png",
+      "sha256": "f22070e942b536f7f37ae02c37d2445d7fa70762f2ddce6e36ed9bde92cee616",
+      "size_bytes": 42763
+    },
+    {
+      "path": "results/budget_sweep/figures/topk_candidatek_quality.png",
+      "sha256": "c72017375993cf3f4ddaa861bd7c59b36a250d889dc9846ae4e81638fdde7dd8",
+      "size_bytes": 47222
+    },
+    {
+      "path": "results/budget_sweep/figures/candidatek_latency.png",
+      "sha256": "106a03adeb7944ce3b817f5c0b90a0d45e2ab4fd331677b06095eb6cb044d68e",
+      "size_bytes": 68637
+    },
+    {
+      "path": "results/budget_sweep/figures/memory_count_resources.png",
+      "sha256": "11eb24231bb7b4e6b61195f6a9af4f9eb6738092a06cf0f986b396c8d688bf45",
+      "size_bytes": 120803
+    },
+    {
+      "path": "results/budget_sweep/figures/quality_resource_tradeoff.png",
+      "sha256": "eabf9513a926948e34fa8343302caa16959bf30da8701f1c152d3b3d3591937e",
+      "size_bytes": 59524
+    }
+  ],
+  "probe_count": 3,
+  "reinforcement": false,
+  "repeat": 3,
+  "row_count": 1296,
+  "run_id": "budget_sweep_20260716",
+  "seed": 42,
+  "skipped_invalid_combinations": [],
+  "token_metric": "deterministic_proxy_not_real_tokenizer"
+}
