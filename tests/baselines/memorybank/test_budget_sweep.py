@@ -4,6 +4,7 @@ import csv
 import hashlib
 import importlib.util
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -344,13 +345,37 @@ def test_quick_main_writes_compact_verified_artifacts(
     assert str(tmp_path) not in json.dumps(summary, ensure_ascii=False)
     assert str(tmp_path) not in json.dumps(manifest, ensure_ascii=False)
 
+    text_artifacts = [
+        output / "budget_sweep_rows.csv",
+        output / "budget_sweep_rows.json",
+        output / "budget_sweep_summary.csv",
+        output / "budget_sweep_summary.json",
+        output / "resource_metrics.json",
+        output / "manifest.json",
+    ]
+    for path in text_artifacts:
+        data = path.read_bytes()
+        assert b"\r\n" not in data
+        data.decode("utf-8")
+
+    serialized_metadata = json.dumps(
+        {"manifest": manifest, "resources": resources}, ensure_ascii=False
+    )
+    assert re.search(r"[A-Za-z]:[\\/]", serialized_metadata) is None
+
     for artifact in manifest["output_files"]:
         path = output / Path(artifact["path"]).name
         if "figures/" in artifact["path"]:
             path = output / "figures" / Path(artifact["path"]).name
-        digest = hashlib.sha256(path.read_bytes()).hexdigest()
+        data = path.read_bytes()
+        digest = hashlib.sha256(data).hexdigest()
         assert artifact["sha256"] == digest
-        assert artifact["size_bytes"] == path.stat().st_size
+        assert artifact["size_bytes"] == len(data)
+
+    for recorded_path, recorded_size in resources["artifact_file_bytes"].items():
+        matches = list(output.rglob(Path(recorded_path).name))
+        assert len(matches) == 1
+        assert recorded_size == len(matches[0].read_bytes())
 
 
 def test_json_writer_rejects_nan(tmp_path: Path) -> None:

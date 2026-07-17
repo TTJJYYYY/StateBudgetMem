@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import csv
 import hashlib
+import io
 import json
 import math
 import os
@@ -1152,10 +1153,11 @@ def artifact_metadata(
     path: Path,
     base_dir: Path | None = None,
 ) -> dict[str, Any]:
+    data = path.read_bytes()
     return {
         "path": portable_artifact_path(path, base_dir=base_dir),
-        "size_bytes": _file_size(path),
-        "sha256": sha256_file(path),
+        "size_bytes": len(data),
+        "sha256": hashlib.sha256(data).hexdigest(),
     }
 
 
@@ -1204,25 +1206,37 @@ def _write_csv(
     rows: list[dict[str, Any]],
     fieldnames: Sequence[str],
 ) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", encoding="utf-8-sig", newline="") as handle:
-        writer = csv.DictWriter(handle, fieldnames=fieldnames, extrasaction="ignore")
-        writer.writeheader()
-        for row in rows:
-            serialized = dict(row)
-            for key, value in serialized.items():
-                if isinstance(value, (list, dict)):
-                    serialized[key] = json.dumps(value, ensure_ascii=False, sort_keys=True)
-            writer.writerow(serialized)
+    buffer = io.StringIO(newline="")
+    writer = csv.DictWriter(
+        buffer,
+        fieldnames=fieldnames,
+        extrasaction="ignore",
+        lineterminator="\n",
+    )
+    writer.writeheader()
+    for row in rows:
+        serialized = dict(row)
+        for key, value in serialized.items():
+            if isinstance(value, (list, dict)):
+                serialized[key] = json.dumps(value, ensure_ascii=False, sort_keys=True)
+        writer.writerow(serialized)
+    _write_utf8_lf_text(path, buffer.getvalue())
 
 
 def _write_json(path: Path, payload: Any) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(
+    _write_utf8_lf_text(
+        path,
         json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True, allow_nan=False)
         + "\n",
-        encoding="utf-8",
     )
+
+
+def _write_utf8_lf_text(path: Path, text: str) -> None:
+    """Write deterministic UTF-8 bytes without platform newline translation."""
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    normalized = text.replace("\r\n", "\n").replace("\r", "\n")
+    path.write_bytes(normalized.encode("utf-8"))
 
 
 def _write_json_stable_size(path: Path, payload: dict[str, Any]) -> None:
