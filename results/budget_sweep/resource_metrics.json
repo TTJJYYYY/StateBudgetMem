@@ -1,0 +1,43 @@
+{
+  "artifact_file_bytes": {
+    "results/budget_sweep/budget_sweep_rows.csv": 375315,
+    "results/budget_sweep/budget_sweep_rows.json": 1675004,
+    "results/budget_sweep/budget_sweep_summary.csv": 32016,
+    "results/budget_sweep/budget_sweep_summary.json": 170201,
+    "results/budget_sweep/figures/candidatek_latency.png": 68854,
+    "results/budget_sweep/figures/memory_count_resources.png": 124207,
+    "results/budget_sweep/figures/quality_resource_tradeoff.png": 59510,
+    "results/budget_sweep/figures/token_budget_quality.png": 42763,
+    "results/budget_sweep/figures/topk_candidatek_quality.png": 47222,
+    "results/budget_sweep/resource_metrics.json": 2072
+  },
+  "cloud_api_used": false,
+  "created_at": "2026-07-17T06:14:50.788195+00:00",
+  "elapsed_ms": 4001.299099996686,
+  "embedding_backend": "hash",
+  "embedding_dim": 32,
+  "embedding_model": "deterministic_hash_embedding",
+  "environment": {
+    "platform": "Windows-11-10.0.26200-SP0",
+    "processor": "Intel64 Family 6 Model 183 Stepping 1, GenuineIntel",
+    "python_version": "3.13.0"
+  },
+  "estimated_memory_storage_definition": "UTF-8 bytes of memory content and selected metadata plus portrait/summary; an estimate, not persisted disk usage",
+  "llm_called": false,
+  "local_only": true,
+  "max_estimated_faiss_index_bytes": 256000,
+  "max_estimated_memory_storage_bytes": 297473,
+  "max_faiss_index_size": 2000,
+  "peak_tracemalloc_bytes": 5135690,
+  "result_artifact_bytes": 2597164,
+  "rss_after_bytes": 73420800,
+  "rss_available": true,
+  "rss_before_bytes": 67833856,
+  "rss_delta_bytes": 5586944,
+  "rss_measurement": "psutil.Process(os.getpid()).memory_info().rss sampled before/after the sweep and immediately before/after each retrieval",
+  "rss_peak_bytes": 80826368,
+  "rss_unavailable_reason": null,
+  "run_id": "budget_sweep_20260716",
+  "token_metric": "deterministic_proxy_not_real_tokenizer",
+  "token_proxy_definition": "ASCII alphanumeric runs count as one proxy unit; each non-ASCII non-whitespace character counts as one proxy unit. This is not a real tokenizer."
+}

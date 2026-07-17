@@ -170,6 +170,31 @@ is a **MemoryBank core memory-system baseline**, not a complete conversational
 agent: memory extraction, summaries, profile evolution, and answer generation
 do not use a local LLM in this phase.
 
+## Budget sweep / Resource metric notes
+
+The deterministic local budget sweep varies token budget, Top-K, candidate-K,
+and memory count without changing MemoryBank, Router, or Adapter logic:
+
+```powershell
+.venv\Scripts\python.exe tools\memorybank\run_budget_sweep.py `
+  --results-root results\budget_sweep `
+  --token-budget 64 128 256 512 --top-k 1 3 5 `
+  --candidate-k 5 10 20 --memory-count 100 500 1000 2000 `
+  --forgetting-threshold 0.3 --repeat 3 --seed 42
+```
+
+Compact CSV/JSON outputs and five figures are stored in
+[`results/budget_sweep/`](results/budget_sweep/); the settings, measured results,
+and limitations are documented in
+[`docs/budget_sweep_results_20260716.md`](docs/budget_sweep_results_20260716.md).
+RSS is sampled whole-process resident memory, so it includes Python, NumPy,
+FAISS, and loaded dependencies. Memory storage is explicitly an estimated
+UTF-8 content/metadata size, while result artifact bytes are actual generated
+file sizes. The reported token value is a deterministic proxy—ASCII
+alphanumeric runs plus non-ASCII non-whitespace characters—not a real tokenizer
+token count. This synthetic sweep explains budget/resource trends only; formal
+method comparisons remain under `results/fair_comparison/`.
+
 ## Demo Commands
 
 ## Frozen unified-interface smoke
