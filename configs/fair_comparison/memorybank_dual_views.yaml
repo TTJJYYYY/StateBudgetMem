@@ -1,0 +1,16 @@
+dataset_path: data/controlled/temporal_challenge_v1.jsonl
+results_dir: results/fair_comparison/runs/memorybank_dual_views
+methods: memorybank_dual_views
+top_k: 3
+candidate_k: 20
+token_budget: 256
+random_seed: 42
+repeat: 1
+embedding_backend: sentence_transformer
+embedding_model: all-MiniLM-L6-v2
+forgetting_enabled: true
+forgetting_threshold: 0.3
+exclude_forgotten: false
+reinforcement_enabled: false
+query_state_policy: independent
+token_counter_name: memory_record_token_cost
