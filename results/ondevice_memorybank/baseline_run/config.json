@@ -1,7 +1,7 @@
 {
   "current_time": "2026-07-11 12:00",
   "detailed_logs": true,
-  "embedding_backend": "sentence-transformers",
+  "embedding_backend": "hash",
   "embedding_dim": 384,
   "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
   "enable_forgetting": true,
@@ -14,7 +14,7 @@
     1000,
     2000
   ],
-  "output_dir": "D:\\projects\\memorybankproject\\StateBudgetMem\\results\\ondevice_memorybank\\baseline_run",
+  "output_dir": "C:\\Users\\19868\\OneDrive\\Desktop\\StateBudgetMem\\results\\ondevice_memorybank\\baseline_run",
   "repeat": 3,
   "retention_time_unit_hours": 24.0,
   "seed": 42,
