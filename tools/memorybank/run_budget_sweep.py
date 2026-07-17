@@ -909,7 +909,10 @@ def build_manifest(
         "probe_count": len(PROBES),
         "skipped_invalid_combinations": skipped_invalid_combinations,
         "token_metric": TOKEN_METRIC,
-        "output_files": [artifact_metadata(path) for path in artifacts],
+        "output_files": [
+            artifact_metadata(path, base_dir=args.results_root)
+            for path in artifacts
+        ],
         "limitations": limitations(),
     }
 
@@ -1145,12 +1148,30 @@ def percentile(values: Iterable[float], quantile: float) -> float:
     return selected[lower] + (selected[upper] - selected[lower]) * fraction
 
 
-def artifact_metadata(path: Path) -> dict[str, Any]:
+def artifact_metadata(
+    path: Path,
+    base_dir: Path | None = None,
+) -> dict[str, Any]:
     return {
-        "path": repository_relative(path),
+        "path": portable_artifact_path(path, base_dir=base_dir),
         "size_bytes": _file_size(path),
         "sha256": sha256_file(path),
     }
+
+
+def portable_artifact_path(path: Path, base_dir: Path | None = None) -> str:
+    """Return a non-absolute path while retaining output subdirectories."""
+
+    resolved = path.resolve()
+    try:
+        return resolved.relative_to(ROOT.resolve()).as_posix()
+    except ValueError:
+        if base_dir is not None:
+            try:
+                return resolved.relative_to(base_dir.resolve()).as_posix()
+            except ValueError:
+                pass
+        return path.name
 
 
 def sha256_file(path: Path) -> str:
