@@ -1,0 +1,33 @@
+{
+  "dataset_name": "temporal_challenge",
+  "dataset_version": "v1",
+  "dataset_path": "data/controlled/temporal_challenge_v1.jsonl",
+  "schema": "statebudgetmem.schemas.Scenario",
+  "schema_version": "1",
+  "frozen": true,
+  "sha256": "f93331a2d93588fa8931efb4484fce577f5a5c9c4e679c51d4bb0192af6c8dd9",
+  "scenario_count": 32,
+  "memory_count": 193,
+  "query_count": 96,
+  "query_type_counts": {
+    "CURRENT": 32,
+    "HISTORICAL": 32,
+    "CHANGE": 32,
+    "GENERAL": 0
+  },
+  "memory_status_counts": {
+    "CURRENT": 147,
+    "HISTORICAL": 38,
+    "INVALIDATED": 4,
+    "UNKNOWN": 4
+  },
+  "relation_counts": {
+    "supersedes_edges": 25,
+    "temporarily_invalidates_edges": 11
+  },
+  "coverage_notes": [
+    "Version v1 contains balanced CURRENT, HISTORICAL, and CHANGE queries.",
+    "GENERAL queries are not included in this temporal challenge dataset and are recorded explicitly with count zero.",
+    "The dataset must not be modified in place after freezing; revisions require a new versioned file."
+  ]
+}

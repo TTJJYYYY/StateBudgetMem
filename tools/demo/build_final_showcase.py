@@ -34,12 +34,15 @@ from statebudgetmem.answering import (
 
 
 METHOD_GROUPS = {
+    "tfidf_topk": "baseline",
     "memorybank_core": "baseline",
     "memorybank_versioning": "proposed variant",
     "memorybank_dual_views": "proposed variant",
     "statebudgetmem_rule": "proposed variant",
     "statebudgetmem_oracle": "oracle upper bound",
 }
+
+EXPECTED_FORMAL_METHODS = tuple(METHOD_GROUPS)
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -402,6 +405,10 @@ def build_experiment_dashboard_data(
         fair_results_dir / "method_summary.json",
         default=summary.get("methods", []),
     )
+    if not method_summary:
+        method_summary = summarize_per_query_results(
+            fair_results_dir / "per_query_results.jsonl"
+        )
     config = read_json(fair_results_dir / "run_config_resolved.json", default={})
     environment = read_json(fair_results_dir / "environment.json", default={})
     resource_metrics = read_json(resource_dir / "memorybank_resource_metrics.json", default={})
@@ -427,12 +434,18 @@ def build_experiment_dashboard_data(
             }
         )
 
+    method_names = {method["method"] for method in methods}
+    missing_methods = [
+        method for method in EXPECTED_FORMAL_METHODS if method not in method_names
+    ]
     return {
         "metadata": {
             "title": "Fair Experiment Dashboard Data",
             "formal_source_dir": str(fair_results_dir),
             "resource_source_dir": str(resource_dir),
             "created_at": datetime.now(timezone.utc).isoformat(),
+            "expected_methods": list(EXPECTED_FORMAL_METHODS),
+            "missing_methods": missing_methods,
             "conclusion_boundary": (
                 "Formal conclusions come from the unified fair-comparison runner. "
                 "Case Entry and MemoryExplorer are display and analysis tools."
@@ -466,6 +479,73 @@ def build_experiment_dashboard_data(
         "environment": environment,
         "method_groups": METHOD_GROUPS,
     }
+
+
+def summarize_per_query_results(path: Path) -> list[dict[str, Any]]:
+    if not path.exists():
+        return []
+
+    rows: list[dict[str, Any]] = []
+    with path.open("r", encoding="utf-8") as handle:
+        for line in handle:
+            if not line.strip():
+                continue
+            payload = json.loads(line)
+            if payload.get("status") == "success":
+                rows.append(payload)
+
+    by_method: dict[str, list[dict[str, Any]]] = {}
+    for row in rows:
+        by_method.setdefault(row["method"], []).append(row)
+
+    summaries: list[dict[str, Any]] = []
+    for method in EXPECTED_FORMAL_METHODS:
+        selected = by_method.get(method, [])
+        if not selected:
+            continue
+        summaries.append(
+            {
+                "method": method,
+                "mean_recall_at_k": mean_numeric(selected, "recall_at_k"),
+                "mean_valid_recall_at_k": mean_numeric(
+                    selected, "valid_recall_at_k"
+                ),
+                "mean_stale_retrieval_rate": mean_numeric(
+                    selected, "stale_retrieval_rate"
+                ),
+                "mean_total_token_cost": mean_numeric(
+                    selected, "total_token_cost"
+                ),
+                "mean_retrieval_latency_ms": mean_numeric(
+                    selected, "retrieval_latency_ms"
+                ),
+                "mean_eligible_count": mean_numeric(
+                    selected, "eligible_memory_count"
+                ),
+                "mean_candidate_count": mean_numeric(
+                    selected, "candidate_count_after_scope"
+                ),
+                "query_count": len(selected),
+                "top_k": single_value(selected, "top_k"),
+                "candidate_k": single_value(selected, "candidate_k"),
+                "token_budget": single_value(selected, "token_budget"),
+            }
+        )
+    return summaries
+
+
+def mean_numeric(rows: list[dict[str, Any]], field: str) -> float | None:
+    values = [float(row[field]) for row in rows if row.get(field) is not None]
+    if not values:
+        return None
+    return sum(values) / len(values)
+
+
+def single_value(rows: list[dict[str, Any]], field: str) -> Any:
+    values = {row.get(field) for row in rows if row.get(field) is not None}
+    if len(values) == 1:
+        return next(iter(values))
+    return None
 
 
 def build_resource_panel(dashboard_data: dict[str, Any]) -> dict[str, Any]:
