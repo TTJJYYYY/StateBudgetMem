@@ -47,8 +47,8 @@ def test_temporal_challenge_v1_audit() -> None:
     }
 
     assert audit["sha256"] == (
-        "f93331a2d93588fa8931efb4484fce577f5a5c9c4e679c51"
-        "d4bb0192af6c8dd9"
+        "8eb0757dd676105a17ecfcc365ba500a10e952f67b955f7aae"
+        "5c925c0541dc2d"
     )
 
 

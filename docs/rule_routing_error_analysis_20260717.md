@@ -219,6 +219,9 @@ Rule 比 Oracle 表现差的查询共有：
 | `eligibility_filter_overpruning` | 45 |
 | `wrong_temporal_view` | 1 |
 
+这里的 51 是 Rule 与 Oracle 存在路由错误或检索质量差距的案例数；
+50 是其中被 Rule Router 预测为 GENERAL 的案例数。两者是不同口径。
+
 这些错误案例中：
 
 - Mean Recall Gap：`0.4239`
