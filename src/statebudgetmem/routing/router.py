@@ -577,13 +577,21 @@ class LLMQueryRouter(QueryRouterABC):
 # RuleBasedRouter — 纯规则兜底 (离线可用)
 # ════════════════════════════════════════════════════════════════
 
-# 通用知识关键词 (优先级最高: 天气/数学/常识等不依赖个人记忆)
+# 通用知识关键词 (优先级最高: 数学/常识等不依赖个人记忆)
 _GENERAL_KEYWORDS: list[str] = [
-    "天气", "气温", "温度多少", "下雨吗", "下雪吗",
     "数学", "计算", "算一下", "算算", "乘以", "除以", "加", "减",
     "首都", "省会", "公式", "定义", "是什么意思", "什么意思",
     "怎么回事", "帮我查", "百科", "维基",
     "光速", "圆周率", "勾股定理", "牛顿", "爱因斯坦",
+]
+
+_WEATHER_GENERAL_KEYWORDS: list[str] = [
+    "天气", "气温", "温度多少", "下雨吗", "下雪吗",
+]
+
+_PERSONAL_MEMORY_HINTS: list[str] = [
+    "我", "我的", "我们", "用户", "上班", "通勤", "去学校", "去公司",
+    "住", "吃", "喝", "跑步", "运动", "课程", "项目", "药", "取药",
 ]
 
 # 时态关键词表 (按优先级 CHANGE > HISTORICAL > CURRENT 排序)
@@ -598,15 +606,21 @@ _TEMPORAL_KEYWORDS: list[tuple[QueryType, list[str]]] = [
     ]),
     # HISTORICAL
     (QueryType.HISTORICAL, [
-        "以前", "之前", "那时候", "上周", "上个月", "去年", "曾经",
-        "当时", "过去", "前年", "大学时候", "小时候", "从前", "早前",
-        "前段时间", "先前", "昔日", "三个月前", "半年前",
+        "一月", "二月", "三月", "四月", "五月", "六月", "七月", "八月",
+        "九月", "十月", "十一月", "十二月",
+        "月初", "月中", "月末", "上旬", "中旬", "下旬",
+        "以前", "之前", "此前", "那时候", "那会儿", "上周", "上个月", "去年",
+        "曾经", "当时", "过去", "前年", "大学时", "大学时候", "高中时",
+        "初中时", "小学时", "小时候", "从前", "早前", "前段时间", "先前",
+        "昔日", "三个月前", "半年前", "之前那次", "取药前", "搬家前",
+        "改计划前", "取消前", "被取消前", "调整前", "前",
     ]),
     # CURRENT
     (QueryType.CURRENT, [
         "现在", "目前", "当前", "最近", "现在还", "现在是不是",
         "我现在的", "我目前的", "我最近的", "今天", "此刻", "眼下",
-        "当今", "现阶段", "现在适合", "现在在",
+        "当今", "现阶段", "现在适合", "现在在", "适合", "应该", "还能",
+        "能否", "能不能",
     ]),
 ]
 
@@ -640,11 +654,14 @@ class RuleBasedRouter(QueryRouterABC):
         for kw in _GENERAL_KEYWORDS:
             if kw in text:
                 return QueryType.GENERAL
+        for kw in _WEATHER_GENERAL_KEYWORDS:
+            if kw in text and not _has_personal_memory_hint(text):
+                return QueryType.GENERAL
 
         # 2-4. 按优先级检查时态关键词
         for qtype, keywords in _TEMPORAL_KEYWORDS:
             for kw in keywords:
-                if kw in text:
+                if _temporal_keyword_matches(text, kw):
                     return qtype
 
         # 5. 无匹配 → fallback
@@ -709,6 +726,24 @@ def _tokenize(text: str) -> list[str]:
     if buf:
         tokens.append("".join(buf).lower())
     return tokens
+
+
+def _has_personal_memory_hint(text: str) -> bool:
+    return any(hint in text for hint in _PERSONAL_MEMORY_HINTS)
+
+
+def _temporal_keyword_matches(text: str, keyword: str) -> bool:
+    if keyword != "前":
+        return keyword in text
+    event_before_markers = (
+        "取药前",
+        "搬家前",
+        "改计划前",
+        "取消前",
+        "被取消前",
+        "调整前",
+    )
+    return any(marker in text for marker in event_before_markers)
 
 
 __all__ = [

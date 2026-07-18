@@ -1,0 +1,94 @@
+[
+  {
+    "gold_valid_memory_ids": [
+      "S105_spicy_oral_surgery_M1",
+      "S105_spicy_oral_surgery_M5"
+    ],
+    "missing_gold_ids": [
+      "S105_spicy_oral_surgery_M5"
+    ],
+    "point_in_time_candidate_ids": [
+      "S105_spicy_oral_surgery_M1",
+      "S105_spicy_oral_surgery_M3",
+      "S105_spicy_oral_surgery_M4",
+      "S105_spicy_oral_surgery_M6"
+    ],
+    "possible_reason": "gold_valid_memory_ids and point-in-time view semantics differ; likely temporary/unknown-state history annotation expects prior evidence that resolver no longer treats as active at reference_time.",
+    "query_id": "S105_spicy_oral_surgery_Q_HISTORICAL",
+    "query_text": "五月中旬我能接受什么辣度？",
+    "reference_time": "2026-05-18",
+    "scenario_id": "S105_spicy_oral_surgery"
+  },
+  {
+    "gold_valid_memory_ids": [
+      "S124_transport_overlap_M1",
+      "S124_transport_overlap_M3"
+    ],
+    "missing_gold_ids": [
+      "S124_transport_overlap_M3"
+    ],
+    "point_in_time_candidate_ids": [
+      "S124_transport_overlap_M5",
+      "S124_transport_overlap_M1"
+    ],
+    "possible_reason": "gold_valid_memory_ids and point-in-time view semantics differ; likely temporary/unknown-state history annotation expects prior evidence that resolver no longer treats as active at reference_time.",
+    "query_id": "S124_transport_overlap_Q_HISTORICAL",
+    "query_text": "二月份我工作日通常怎么通勤？",
+    "reference_time": "2026-02-10",
+    "scenario_id": "S124_transport_overlap"
+  },
+  {
+    "gold_valid_memory_ids": [
+      "S129_dentist_unknown_M1"
+    ],
+    "missing_gold_ids": [
+      "S129_dentist_unknown_M1"
+    ],
+    "point_in_time_candidate_ids": [
+      "S129_dentist_unknown_M3",
+      "S129_dentist_unknown_M4",
+      "S129_dentist_unknown_M6"
+    ],
+    "possible_reason": "gold_valid_memory_ids and point-in-time view semantics differ; likely temporary/unknown-state history annotation expects prior evidence that resolver no longer treats as active at reference_time.",
+    "query_id": "S129_dentist_unknown_Q_HISTORICAL",
+    "query_text": "被取消前，我原来约的是哪天几点？",
+    "reference_time": "2026-06-27",
+    "scenario_id": "S129_dentist_unknown"
+  },
+  {
+    "gold_valid_memory_ids": [
+      "S131_meeting_day_unknown_M1"
+    ],
+    "missing_gold_ids": [
+      "S131_meeting_day_unknown_M1"
+    ],
+    "point_in_time_candidate_ids": [
+      "S131_meeting_day_unknown_M3",
+      "S131_meeting_day_unknown_M4",
+      "S131_meeting_day_unknown_M5"
+    ],
+    "possible_reason": "gold_valid_memory_ids and point-in-time view semantics differ; likely temporary/unknown-state history annotation expects prior evidence that resolver no longer treats as active at reference_time.",
+    "query_id": "S131_meeting_day_unknown_Q_HISTORICAL",
+    "query_text": "取消之前，项目例会原来固定在什么时候？",
+    "reference_time": "2026-06-27",
+    "scenario_id": "S131_meeting_day_unknown"
+  },
+  {
+    "gold_valid_memory_ids": [
+      "S132_medication_dosage_unknown_M1"
+    ],
+    "missing_gold_ids": [
+      "S132_medication_dosage_unknown_M1"
+    ],
+    "point_in_time_candidate_ids": [
+      "S132_medication_dosage_unknown_M4",
+      "S132_medication_dosage_unknown_M3",
+      "S132_medication_dosage_unknown_M6"
+    ],
+    "possible_reason": "gold_valid_memory_ids and point-in-time view semantics differ; likely temporary/unknown-state history annotation expects prior evidence that resolver no longer treats as active at reference_time.",
+    "query_id": "S132_medication_dosage_unknown_Q_HISTORICAL",
+    "query_text": "医生调整前，我每天晚上服用多少毫克？",
+    "reference_time": "2026-06-27",
+    "scenario_id": "S132_medication_dosage_unknown"
+  }
+]

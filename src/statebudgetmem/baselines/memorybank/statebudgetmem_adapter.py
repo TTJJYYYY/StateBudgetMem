@@ -164,10 +164,10 @@ class StateBudgetMemDenseMethod:
 
         if self._mode is StateBudgetMemMode.DUAL_VIEWS:
             return (
-                QueryType.CHANGE,
-                None,
-                "none",
-                "current_and_history_no_router",
+                query.query_type,
+                query.query_type,
+                "oracle_query_type",
+                "oracle_query_type_dual_view_ablation",
             )
 
         if self._mode is StateBudgetMemMode.RULE_ROUTING:
@@ -203,11 +203,14 @@ class StateBudgetMemDenseMethod:
         ) = self._effective_query_type(query)
 
         if effective_query_type is QueryType.GENERAL:
-            records: list[MemoryRecord] = []
-            source_view = "none"
-        elif self._mode is StateBudgetMemMode.DUAL_VIEWS:
-            records = self._current_and_history_records(query)
-            source_view = "current_and_history"
+            if self._mode is StateBudgetMemMode.ORACLE_ROUTING:
+                records: list[MemoryRecord] = []
+                source_view = "none"
+            else:
+                records = self._view_manager.current_records(
+                    reference_time=query.reference_time
+                )
+                source_view = "current_general_fallback"
         elif effective_query_type is QueryType.CURRENT:
             records = self._view_manager.current_records(
                 reference_time=query.reference_time
@@ -316,4 +319,12 @@ class StateBudgetMemDenseMethod:
             "eligible_memory_count": len(decision.eligible_memory_ids),
             "base_method_name": "memorybank_core",
             "selection_policy": decision.selection_policy,
+            "uses_oracle_query_type": (
+                self._mode
+                in {
+                    StateBudgetMemMode.DUAL_VIEWS,
+                    StateBudgetMemMode.ORACLE_ROUTING,
+                }
+            ),
+            "deployable_method": self._mode is StateBudgetMemMode.RULE_ROUTING,
         }

@@ -277,10 +277,16 @@ class TestRuleBasedRouter:
             ("我去年这个时候在做什么工作?", QueryType.HISTORICAL),
             ("我大学时候的爱好是什么?", QueryType.HISTORICAL),
             ("三个月前我的体重是多少?", QueryType.HISTORICAL),
+            ("二月份我工作日通常怎么去公司？", QueryType.HISTORICAL),
+            ("六月上旬天气正常时我怎么去学校？", QueryType.HISTORICAL),
+            ("大学时我的主要课程重点是什么？", QueryType.HISTORICAL),
+            ("取药前我每天晚上服用多少毫克？", QueryType.HISTORICAL),
             # CURRENT
             ("我现在适合吃什么?", QueryType.CURRENT),
             ("我目前的运动习惯是什么?", QueryType.CURRENT),
             ("我最近在用什么编程语言?", QueryType.CURRENT),
+            ("今天暴雨，我应该怎么去学校？", QueryType.CURRENT),
+            ("拔牙后出血前还能吃什么？", QueryType.CURRENT),
             # GENERAL
             ("今天北京天气怎么样?", QueryType.GENERAL),
             ("法国的首都是哪里?", QueryType.GENERAL),

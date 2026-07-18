@@ -1,0 +1,23 @@
+{
+  "config_path": "configs\\fair_comparison_memorybank_statebudgetmem_v2.yaml",
+  "created_at": "2026-07-18T07:17:16.443314Z",
+  "dataset_path": "data\\controlled\\temporal_challenge_v1.jsonl",
+  "dataset_sha256": "f93331a2d93588fa8931efb4484fce577f5a5c9c4e679c51d4bb0192af6c8dd9",
+  "dependency_versions": {
+    "PyYAML": "6.0.3",
+    "pydantic": "2.13.4"
+  },
+  "dirty_worktree": true,
+  "embedding_backend": "sentence-transformers",
+  "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
+  "git_commit": "e62cc69e3da70c026d1b9a03511ded7f5071ddbe",
+  "hardware": {
+    "machine": "AMD64",
+    "processor": "AMD64 Family 26 Model 36 Stepping 0, AuthenticAMD"
+  },
+  "platform": "Windows-11-10.0.26200-SP0",
+  "python_version": "3.13.5",
+  "random_seed": 42,
+  "run_id": "unified_smoke_seed42_20260718T071439266732Z",
+  "token_counter_name": "memory_record_token_cost"
+}

@@ -368,31 +368,43 @@ def test_versioning_uses_current_snapshot_for_every_personal_query(monkeypatch) 
 
 
 @pytest.mark.parametrize(
-    "query_type",
+    "query_type, reference_time, expected_ids, source_view",
     [
-        QueryType.CURRENT,
-        QueryType.HISTORICAL,
-        QueryType.CHANGE,
-        QueryType.GENERAL,
+        (QueryType.CURRENT, date(2026, 6, 1), {"m_metro"}, "current"),
+        (QueryType.HISTORICAL, date(2026, 2, 1), {"m_drive"}, "history"),
+        (
+            QueryType.CHANGE,
+            date(2026, 6, 1),
+            {"m_drive", "m_metro"},
+            "current_and_history",
+        ),
+        (
+            QueryType.GENERAL,
+            date(2026, 6, 1),
+            {"m_metro"},
+            "current_general_fallback",
+        ),
     ],
 )
-def test_dual_views_eligibility_ignores_query_type(query_type) -> None:
+def test_dual_views_uses_oracle_query_type_for_view_ablation(
+    query_type, reference_time, expected_ids, source_view
+) -> None:
     method = _method(StateBudgetMemMode.DUAL_VIEWS, router=_ExplodingRouter())
     method.ingest(_memories())
 
     decision = method._resolve_eligibility(
-        _query("same query", query_type, reference_time=date(2026, 6, 1))
+        _query("same query", query_type, reference_time=reference_time)
     )
 
-    assert decision.eligible_memory_ids == frozenset({"m_drive", "m_metro"})
-    assert decision.effective_query_type is QueryType.CHANGE
-    assert decision.predicted_query_type is None
-    assert decision.source_view == "current_and_history"
-    assert decision.router_source == "none"
-    assert decision.selection_policy == "current_and_history_no_router"
+    assert decision.eligible_memory_ids == frozenset(expected_ids)
+    assert decision.effective_query_type is query_type
+    assert decision.predicted_query_type is query_type
+    assert decision.source_view == source_view
+    assert decision.router_source == "oracle_query_type"
+    assert decision.selection_policy == "oracle_query_type_dual_view_ablation"
 
 
-def test_dual_views_uses_current_and_full_history_without_gold(monkeypatch) -> None:
+def test_dual_views_current_uses_current_view_not_gold(monkeypatch) -> None:
     method = _method(StateBudgetMemMode.DUAL_VIEWS)
     method.ingest(_memories())
     query = _query(
@@ -406,14 +418,16 @@ def test_dual_views_uses_current_and_full_history_without_gold(monkeypatch) -> N
 
     result = method.retrieve(query, top_k=2)
 
-    assert calls[0]["allowed_memory_ids"] == {"m_drive", "m_metro"}
-    assert result.predicted_query_type is None
-    assert result.metadata["effective_query_type"] == "CHANGE"
-    assert result.metadata["router_source"] == "none"
-    assert result.metadata["source_view"] == "current_and_history"
+    assert calls[0]["allowed_memory_ids"] == {"m_metro"}
+    assert result.predicted_query_type is QueryType.CURRENT
+    assert result.metadata["effective_query_type"] == "CURRENT"
+    assert result.metadata["router_source"] == "oracle_query_type"
+    assert result.metadata["source_view"] == "current"
     assert (
-        result.metadata["selection_policy"] == "current_and_history_no_router"
+        result.metadata["selection_policy"] == "oracle_query_type_dual_view_ablation"
     )
+    assert result.metadata["uses_oracle_query_type"] is True
+    assert result.metadata["deployable_method"] is False
 
 
 def test_eligibility_and_dual_view_order_are_deterministic() -> None:
@@ -431,10 +445,10 @@ def test_eligibility_and_dual_view_order_are_deterministic() -> None:
     ]
 
     assert first == second
-    assert first.eligible_memory_ids == frozenset({"m_drive", "m_metro"})
+    assert first.eligible_memory_ids == frozenset({"m_metro"})
     assert first_order == second_order == ["m_drive", "m_metro"]
     assert first.selection_policy == second.selection_policy
-    assert first.selection_policy == "current_and_history_no_router"
+    assert first.selection_policy == "oracle_query_type_dual_view_ablation"
     assert dict(first.metadata) == dict(second.metadata) == {"mode": "dual_views"}
 
 
@@ -490,28 +504,19 @@ def test_rule_routing_selects_view_from_text_not_annotation(
     assert result.metadata["selection_policy"] == "rule_routed"
 
 
-def test_rule_general_skips_dense_retrieval(monkeypatch) -> None:
+def test_rule_general_falls_back_to_current_view(monkeypatch) -> None:
     method = _method(StateBudgetMemMode.RULE_ROUTING)
     method.ingest(_memories())
-    called = False
-
-    def fail(*_args, **_kwargs):
-        nonlocal called
-        called = True
-        raise AssertionError("dense retrieval must be skipped")
-
-    monkeypatch.setattr(method, "_retrieve_from_memorybank", fail)
+    calls = _install_fake_dense(monkeypatch, method)
     result = method.retrieve(
         _query("法国的首都是什么？", QueryType.CURRENT),
         top_k=2,
     )
 
-    assert called is False
-    assert result.retrieved_memories == []
+    assert calls[0]["allowed_memory_ids"] == {"m_metro"}
     assert result.predicted_query_type is QueryType.GENERAL
-    assert result.total_token_cost == 0
-    assert result.metadata["source_view"] == "none"
-    assert result.metadata["skipped_dense_retrieval"] is True
+    assert result.total_token_cost == 5
+    assert result.metadata["source_view"] == "current_general_fallback"
     assert result.metadata["selection_policy"] == "rule_routed"
 
 
@@ -612,9 +617,9 @@ def test_nonempty_eligibility_uses_real_scoped_retrieval() -> None:
         (
             StateBudgetMemMode.DUAL_VIEWS,
             _query("commute", QueryType.GENERAL),
-            {"m_drive", "m_metro"},
-            None,
-            "current_and_history_no_router",
+            {"m_metro"},
+            QueryType.GENERAL,
+            "oracle_query_type_dual_view_ablation",
         ),
         (
             StateBudgetMemMode.RULE_ROUTING,
@@ -699,7 +704,12 @@ def test_result_preserves_base_items_scores_ranks_tokens_and_metadata(monkeypatc
     "mode, text, annotated_type, expected_prediction",
     [
         (StateBudgetMemMode.VERSIONING, "anything", QueryType.GENERAL, None),
-        (StateBudgetMemMode.DUAL_VIEWS, "anything", QueryType.GENERAL, None),
+        (
+            StateBudgetMemMode.DUAL_VIEWS,
+            "anything",
+            QueryType.GENERAL,
+            QueryType.GENERAL,
+        ),
         (
             StateBudgetMemMode.RULE_ROUTING,
             "我现在怎么上班？",
@@ -771,9 +781,9 @@ def test_unified_runner_serializes_empty_and_fake_dense_results(
         assert not any("gold" in key for key in metadata)
     assert rows[0]["retrieved_memory_ids"] == ["m_metro"]
     assert rows[0]["predicted_query_type"] is None
-    assert set(rows[1]["retrieved_memory_ids"]) == {"m_drive", "m_metro"}
-    assert rows[1]["predicted_query_type"] is None
-    assert rows[2]["retrieved_memory_ids"] == []
+    assert rows[1]["retrieved_memory_ids"] == ["m_metro"]
+    assert rows[1]["predicted_query_type"] == "GENERAL"
+    assert rows[2]["retrieved_memory_ids"] == ["m_metro"]
     assert rows[2]["predicted_query_type"] == "GENERAL"
     assert rows[3]["retrieved_memory_ids"] == []
     assert rows[3]["predicted_query_type"] == "GENERAL"

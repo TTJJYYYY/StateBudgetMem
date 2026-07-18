@@ -1,0 +1,26 @@
+{
+  "candidate_k": 20,
+  "config_path": "configs\\fair_comparison_memorybank_statebudgetmem_v2.yaml",
+  "dataset_path": "data\\controlled\\temporal_challenge_v1.jsonl",
+  "embedding_backend": "sentence-transformers",
+  "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
+  "exclude_forgotten": false,
+  "forgetting_enabled": true,
+  "forgetting_threshold": 0.3,
+  "methods": [
+    "memorybank_core",
+    "memorybank_versioning",
+    "memorybank_dual_views",
+    "statebudgetmem_rule",
+    "statebudgetmem_oracle"
+  ],
+  "query_state_policy": "independent",
+  "random_seed": 42,
+  "reinforcement_enabled": false,
+  "repeat": 1,
+  "results_dir": "results\\fair_comparison_v2",
+  "run_id": "unified_smoke_seed42_20260718T071439266732Z",
+  "token_budget": 256,
+  "token_counter_name": "memory_record_token_cost",
+  "top_k": 3
+}
