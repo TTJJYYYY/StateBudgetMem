@@ -44,7 +44,7 @@ data/controlled/manifests/temporal_challenge_v1.manifest.json
 SHA-256：
 
 ```text
-f93331a2d93588fa8931efb4484fce577f5a5c9c4e679c51d4bb0192af6c8dd9
+8eb0757dd676105a17ecfcc365ba500a10e952f67b955f7aae5c925c0541dc2d
 ```
 
 `temporal_challenge_v1.jsonl` 已冻结。后续如需修改数据，必须创建新的版本文件，不能直接覆盖 v1。
@@ -80,7 +80,16 @@ configs/fair_experiments/m1_method_matrix.json
 
 ## 4. 公平实验参数
 
-六种方法统一使用：
+本 PR 中存在两套可复现实验入口，不能混为同一组结果：
+
+- `configs/fair_comparison/*.yaml` 对应已经生成的正式分析结果
+  `results/fair_comparison/per_query_results.jsonl`，使用
+  `sentence_transformer + all-MiniLM-L6-v2` 和 `token_budget: 256`。
+- `configs/fair_experiments/m1_*.yaml` 是 M1 离线可复现矩阵，使用
+  `hash + deterministic_hash_embedding` 和 `token_budget: 32`，用于
+  CI/无模型环境下验证公平配置、方法注册和数据冻结校验。
+
+M1 离线矩阵中，六种方法统一使用：
 
 ```yaml
 dataset_path: data/controlled/temporal_challenge_v1.jsonl

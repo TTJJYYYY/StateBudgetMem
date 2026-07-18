@@ -1,0 +1,77 @@
+{
+  "candidate_k_values_non_null": [
+    20
+  ],
+  "dual_views_equivalence": {
+    "all_equivalence_rate": 1,
+    "all_equivalence_rate_by_query_type": {
+      "CHANGE": 1,
+      "CURRENT": 1,
+      "GENERAL": null,
+      "HISTORICAL": 1
+    },
+    "query_count": 96,
+    "recall_equivalence_rate": 1,
+    "retrieved_ids_equivalence_rate": 1,
+    "scores_equivalence_rate": 1,
+    "stale_rate_equivalence_rate": 1,
+    "valid_recall_equivalence_rate": 1
+  },
+  "fairness_validation_passed": true,
+  "general_query_note": "GENERAL has no samples in temporal_challenge_v1; its grouped metrics are null and no performance conclusion should be drawn.",
+  "generated_at": "2026-07-17T06:47:35.311285+00:00",
+  "input_path": "results\\fair_comparison\\per_query_results.jsonl",
+  "method_count": 6,
+  "methods": [
+    "tfidf_topk",
+    "memorybank_core",
+    "memorybank_versioning",
+    "memorybank_dual_views",
+    "statebudgetmem_rule",
+    "statebudgetmem_oracle"
+  ],
+  "outputs": {
+    "by_query_type_csv": "results\\fair_comparison_by_type\\by_query_type.csv",
+    "by_query_type_json": "results\\fair_comparison_by_type\\by_query_type.json",
+    "dual_views_equivalence_csv": "results\\fair_comparison_by_type\\dual_views_equivalence.csv",
+    "routing_confusion_csv": "results\\fair_comparison_by_type\\routing_confusion.csv",
+    "rule_error_cases_jsonl": "results\\fair_comparison_by_type\\rule_error_cases.jsonl"
+  },
+  "query_count_per_method": 96,
+  "query_type_counts": {
+    "CHANGE": 32,
+    "CURRENT": 32,
+    "GENERAL": 0,
+    "HISTORICAL": 32
+  },
+  "random_seed_values": [
+    42
+  ],
+  "routing": {
+    "overall_routing_accuracy": 0.46875,
+    "query_count": 96,
+    "routing_accuracy_by_query_type": {
+      "CHANGE": 0.59375,
+      "CURRENT": 0.78125,
+      "GENERAL": null,
+      "HISTORICAL": 0.03125
+    }
+  },
+  "rule_error_analysis": {
+    "error_case_count": 51,
+    "error_pattern_counts": {
+      "eligibility_filter_overpruning": 45,
+      "fallback_to_general": 50,
+      "wrong_temporal_view": 1
+    },
+    "mean_recall_gap_in_error_cases": 0.4238562091503268,
+    "mean_valid_recall_gap_in_error_cases": 0.7303921568627451
+  },
+  "token_budget_values": [
+    256
+  ],
+  "top_k_values": [
+    3
+  ],
+  "total_record_count": 576
+}
