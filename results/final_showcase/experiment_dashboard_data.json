@@ -1,0 +1,355 @@
+{
+  "config": {
+    "candidate_k": 20,
+    "config_path": "configs\\fair_comparison_memorybank_statebudgetmem_v2.yaml",
+    "dataset_path": "data\\controlled\\temporal_challenge_v1.jsonl",
+    "elapsed_seconds": 115.43276920000062,
+    "embedding_backend": "sentence-transformers",
+    "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
+    "query_state_policy": "independent",
+    "random_seed": 42,
+    "run_id": "unified_smoke_seed42_20260718T071439266732Z",
+    "token_budget": 256,
+    "top_k": 3
+  },
+  "environment": {
+    "config_path": "configs\\fair_comparison_memorybank_statebudgetmem_v2.yaml",
+    "created_at": "2026-07-18T07:17:16.443314Z",
+    "dataset_path": "data\\controlled\\temporal_challenge_v1.jsonl",
+    "dataset_sha256": "f93331a2d93588fa8931efb4484fce577f5a5c9c4e679c51d4bb0192af6c8dd9",
+    "dependency_versions": {
+      "PyYAML": "6.0.3",
+      "pydantic": "2.13.4"
+    },
+    "dirty_worktree": true,
+    "embedding_backend": "sentence-transformers",
+    "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
+    "git_commit": "e62cc69e3da70c026d1b9a03511ded7f5071ddbe",
+    "hardware": {
+      "machine": "AMD64",
+      "processor": "AMD64 Family 26 Model 36 Stepping 0, AuthenticAMD"
+    },
+    "platform": "Windows-11-10.0.26200-SP0",
+    "python_version": "3.13.5",
+    "random_seed": 42,
+    "run_id": "unified_smoke_seed42_20260718T071439266732Z",
+    "token_counter_name": "memory_record_token_cost"
+  },
+  "metadata": {
+    "conclusion_boundary": "Formal conclusions come from the v2 unified fair-comparison runner. Case Entry and MemoryExplorer are fixed-case display and analysis tools; the Free Question Demo is illustrative only and is not used for formal metrics.",
+    "created_at": "2026-07-20T08:11:03.911611+00:00",
+    "expected_methods": [
+      "tfidf_topk",
+      "memorybank_core",
+      "memorybank_versioning",
+      "memorybank_dual_views",
+      "statebudgetmem_rule",
+      "statebudgetmem_oracle"
+    ],
+    "formal_source_dir": "D:\\projects\\memorybankproject\\StateBudgetMem\\results\\fair_comparison_v2",
+    "missing_methods": [
+      "tfidf_topk"
+    ],
+    "resource_source_dir": "D:\\projects\\memorybankproject\\StateBudgetMem\\results\\ondevice_memorybank\\baseline_run",
+    "title": "Fair Experiment Dashboard Data"
+  },
+  "method_groups": {
+    "memorybank_core": "baseline",
+    "memorybank_dual_views": "proposed variant",
+    "memorybank_versioning": "proposed variant",
+    "statebudgetmem_oracle": "oracle upper bound",
+    "statebudgetmem_rule": "proposed variant",
+    "tfidf_topk": "baseline"
+  },
+  "methods": [
+    {
+      "candidate_count": 6.03125,
+      "candidate_k": 20,
+      "eligible_count": 6.03125,
+      "group": "baseline",
+      "method": "memorybank_core",
+      "query_count": 96,
+      "recall_at_k": 0.5426587301587301,
+      "retrieval_latency_ms": 20.885268750134856,
+      "stale_retrieval_rate": 0.17013888888888887,
+      "token_budget": 256,
+      "token_proxy": 32.0,
+      "top_k": 3,
+      "valid_recall_at_k": 0.5390625
+    },
+    {
+      "candidate_count": 3.7604166666666665,
+      "candidate_k": 20,
+      "eligible_count": 3.7604166666666665,
+      "group": "proposed variant",
+      "method": "memorybank_versioning",
+      "query_count": 96,
+      "recall_at_k": 0.439360119047619,
+      "retrieval_latency_ms": 23.52396666689553,
+      "stale_retrieval_rate": 0.003472222222222222,
+      "token_budget": 256,
+      "token_proxy": 28.875,
+      "top_k": 3,
+      "valid_recall_at_k": 0.6970486111111112
+    },
+    {
+      "candidate_count": 4.385416666666667,
+      "candidate_k": 20,
+      "eligible_count": 4.385416666666667,
+      "group": "proposed variant",
+      "method": "memorybank_dual_views",
+      "query_count": 96,
+      "recall_at_k": 0.4758184523809524,
+      "retrieval_latency_ms": 20.626711458210895,
+      "stale_retrieval_rate": 0.003472222222222222,
+      "token_budget": 256,
+      "token_proxy": 29.291666666666668,
+      "top_k": 3,
+      "valid_recall_at_k": 0.7335069444444444
+    },
+    {
+      "candidate_count": 4.125,
+      "candidate_k": 20,
+      "eligible_count": 4.125,
+      "group": "proposed variant",
+      "method": "statebudgetmem_rule",
+      "query_count": 96,
+      "recall_at_k": 0.4714781746031746,
+      "retrieval_latency_ms": 21.102633333005844,
+      "stale_retrieval_rate": 0.003472222222222222,
+      "token_budget": 256,
+      "token_proxy": 29.145833333333332,
+      "top_k": 3,
+      "valid_recall_at_k": 0.7291666666666666
+    },
+    {
+      "candidate_count": 4.385416666666667,
+      "candidate_k": 20,
+      "eligible_count": 4.385416666666667,
+      "group": "oracle upper bound",
+      "method": "statebudgetmem_oracle",
+      "query_count": 96,
+      "recall_at_k": 0.4758184523809524,
+      "retrieval_latency_ms": 19.540807291832607,
+      "stale_retrieval_rate": 0.003472222222222222,
+      "token_budget": 256,
+      "token_proxy": 29.291666666666668,
+      "top_k": 3,
+      "valid_recall_at_k": 0.7335069444444444
+    }
+  ],
+  "resource_metrics": {
+    "by_memory_count": [
+      {
+        "baseline_rss_bytes": 65216512.0,
+        "embedding_file_bytes": 153728.0,
+        "embedding_ms": 6.9472,
+        "faiss_index_file_bytes": 153645.0,
+        "index_build_ms": 0.0,
+        "index_build_peak_rss_bytes": 66008405.333333336,
+        "index_loaded_rss_bytes": 66273280.0,
+        "memory_count": 100,
+        "memory_file_bytes": 12049.0,
+        "memory_write_ms": 6.9472,
+        "metadata_file_bytes": 50086.0,
+        "storage_total_bytes": 369508.0
+      },
+      {
+        "baseline_rss_bytes": 65216512.0,
+        "embedding_file_bytes": 768128.0,
+        "embedding_ms": 28.6645,
+        "faiss_index_file_bytes": 768045.0,
+        "index_build_ms": 0.0,
+        "index_build_peak_rss_bytes": 71170730.66666667,
+        "index_loaded_rss_bytes": 71270400.0,
+        "memory_count": 500,
+        "memory_file_bytes": 61119.0,
+        "memory_write_ms": 28.6645,
+        "metadata_file_bytes": 251156.0,
+        "storage_total_bytes": 1848448.0
+      },
+      {
+        "baseline_rss_bytes": 65216512.0,
+        "embedding_file_bytes": 1536128.0,
+        "embedding_ms": 60.2272,
+        "faiss_index_file_bytes": 1536045.0,
+        "index_build_ms": 0.0,
+        "index_build_peak_rss_bytes": 79081472.0,
+        "index_loaded_rss_bytes": 78770176.0,
+        "memory_count": 1000,
+        "memory_file_bytes": 122459.0,
+        "memory_write_ms": 60.2272,
+        "metadata_file_bytes": 502496.0,
+        "storage_total_bytes": 3697128.0
+      },
+      {
+        "baseline_rss_bytes": 65216512.0,
+        "embedding_file_bytes": 3072128.0,
+        "embedding_ms": 133.63526666666667,
+        "faiss_index_file_bytes": 3072045.0,
+        "index_build_ms": 0.0,
+        "index_build_peak_rss_bytes": 93661866.66666667,
+        "index_loaded_rss_bytes": 92056234.66666667,
+        "memory_count": 2000,
+        "memory_file_bytes": 245131.0,
+        "memory_write_ms": 133.63526666666667,
+        "metadata_file_bytes": 1005168.0,
+        "storage_total_bytes": 7394472.0
+      }
+    ],
+    "log_file_bytes": 322485742,
+    "metric_definitions": {
+      "prompt_token_estimate": "whitespace words plus non-ASCII characters; not a model tokenizer",
+      "recall_at_k": "fraction of probes whose controlled relevant memory is in Top-K",
+      "stale_retrieval_rate": "stale controlled memories divided by retrieved memories",
+      "valid_recall_at_k": "fraction whose current valid memory is in Top-K"
+    },
+    "note": "Resource and top-k sweep data are on-device MemoryBank resource measurements. They support the endpoint story but are separate from the fair comparison table unless rerun through the same runner.",
+    "topk_sweep": [
+      {
+        "mean_prompt_token_estimate": 9.25,
+        "mean_retrieval_latency_ms": 0.15958333333333333,
+        "memory_count": 100,
+        "p50_retrieval_latency_ms": 0.1286,
+        "p95_retrieval_latency_ms": 0.315255,
+        "queries": 12,
+        "recall_at_k": 0.25,
+        "stale_retrieval_rate": 0.0,
+        "top_k": 1,
+        "valid_recall_at_k": 0.25
+      },
+      {
+        "mean_prompt_token_estimate": 25.5,
+        "mean_retrieval_latency_ms": 0.17015833333333333,
+        "memory_count": 100,
+        "p50_retrieval_latency_ms": 0.1197,
+        "p95_retrieval_latency_ms": 0.34574999999999995,
+        "queries": 12,
+        "recall_at_k": 0.75,
+        "stale_retrieval_rate": 0.0,
+        "top_k": 3,
+        "valid_recall_at_k": 0.75
+      },
+      {
+        "mean_prompt_token_estimate": 45.5,
+        "mean_retrieval_latency_ms": 0.210975,
+        "memory_count": 100,
+        "p50_retrieval_latency_ms": 0.14129999999999998,
+        "p95_retrieval_latency_ms": 0.36419999999999997,
+        "queries": 12,
+        "recall_at_k": 0.75,
+        "stale_retrieval_rate": 0.0,
+        "top_k": 5,
+        "valid_recall_at_k": 0.75
+      },
+      {
+        "mean_prompt_token_estimate": 10.75,
+        "mean_retrieval_latency_ms": 0.18251666666666666,
+        "memory_count": 500,
+        "p50_retrieval_latency_ms": 0.14565,
+        "p95_retrieval_latency_ms": 0.32840499999999995,
+        "queries": 12,
+        "recall_at_k": 0.25,
+        "stale_retrieval_rate": 0.0,
+        "top_k": 1,
+        "valid_recall_at_k": 0.25
+      },
+      {
+        "mean_prompt_token_estimate": 26.25,
+        "mean_retrieval_latency_ms": 0.14651666666666666,
+        "memory_count": 500,
+        "p50_retrieval_latency_ms": 0.1469,
+        "p95_retrieval_latency_ms": 0.16932499999999998,
+        "queries": 12,
+        "recall_at_k": 0.75,
+        "stale_retrieval_rate": 0.0,
+        "top_k": 3,
+        "valid_recall_at_k": 0.75
+      },
+      {
+        "mean_prompt_token_estimate": 47.75,
+        "mean_retrieval_latency_ms": 0.16755833333333334,
+        "memory_count": 500,
+        "p50_retrieval_latency_ms": 0.161,
+        "p95_retrieval_latency_ms": 0.19149,
+        "queries": 12,
+        "recall_at_k": 0.75,
+        "stale_retrieval_rate": 0.0,
+        "top_k": 5,
+        "valid_recall_at_k": 0.75
+      },
+      {
+        "mean_prompt_token_estimate": 10.75,
+        "mean_retrieval_latency_ms": 0.235175,
+        "memory_count": 1000,
+        "p50_retrieval_latency_ms": 0.2036,
+        "p95_retrieval_latency_ms": 0.37885499999999994,
+        "queries": 12,
+        "recall_at_k": 0.25,
+        "stale_retrieval_rate": 0.0,
+        "top_k": 1,
+        "valid_recall_at_k": 0.25
+      },
+      {
+        "mean_prompt_token_estimate": 27.75,
+        "mean_retrieval_latency_ms": 0.202925,
+        "memory_count": 1000,
+        "p50_retrieval_latency_ms": 0.1827,
+        "p95_retrieval_latency_ms": 0.28739999999999993,
+        "queries": 12,
+        "recall_at_k": 0.75,
+        "stale_retrieval_rate": 0.0,
+        "top_k": 3,
+        "valid_recall_at_k": 0.75
+      },
+      {
+        "mean_prompt_token_estimate": 47.75,
+        "mean_retrieval_latency_ms": 0.22255,
+        "memory_count": 1000,
+        "p50_retrieval_latency_ms": 0.21105000000000002,
+        "p95_retrieval_latency_ms": 0.27241499999999996,
+        "queries": 12,
+        "recall_at_k": 0.75,
+        "stale_retrieval_rate": 0.0,
+        "top_k": 5,
+        "valid_recall_at_k": 0.75
+      },
+      {
+        "mean_prompt_token_estimate": 10.75,
+        "mean_retrieval_latency_ms": 0.3827833333333333,
+        "memory_count": 2000,
+        "p50_retrieval_latency_ms": 0.37375,
+        "p95_retrieval_latency_ms": 0.53897,
+        "queries": 12,
+        "recall_at_k": 0.25,
+        "stale_retrieval_rate": 0.0,
+        "top_k": 1,
+        "valid_recall_at_k": 0.25
+      },
+      {
+        "mean_prompt_token_estimate": 28.5,
+        "mean_retrieval_latency_ms": 0.30215833333333336,
+        "memory_count": 2000,
+        "p50_retrieval_latency_ms": 0.2919,
+        "p95_retrieval_latency_ms": 0.39025,
+        "queries": 12,
+        "recall_at_k": 0.5,
+        "stale_retrieval_rate": 0.0,
+        "top_k": 3,
+        "valid_recall_at_k": 0.5
+      },
+      {
+        "mean_prompt_token_estimate": 50.0,
+        "mean_retrieval_latency_ms": 0.2968166666666667,
+        "memory_count": 2000,
+        "p50_retrieval_latency_ms": 0.2767,
+        "p95_retrieval_latency_ms": 0.39732999999999996,
+        "queries": 12,
+        "recall_at_k": 0.5,
+        "stale_retrieval_rate": 0.0,
+        "top_k": 5,
+        "valid_recall_at_k": 0.5
+      }
+    ]
+  }
+}

@@ -14,7 +14,7 @@ TOOLS_DEMO = ROOT / "tools" / "demo"
 if str(TOOLS_DEMO) not in sys.path:
     sys.path.insert(0, str(TOOLS_DEMO))
 
-from build_final_showcase import build_final_showcase
+from build_final_showcase import DEFAULT_FAIR_RESULTS_DIR, build_final_showcase
 
 
 FORMAL_METHODS = (
@@ -124,6 +124,7 @@ def test_three_layer_structure(showcase_dir: Path) -> None:
 
     assert "Case Entry" in html
     assert "MemoryExplorer" in html
+    assert "Free Question Demo" in html
     assert "Dashboard" in html
 
 
@@ -146,12 +147,80 @@ def test_formal_results_source_path_present(showcase_dir: Path) -> None:
     assert "fair_comparison" in html
 
 
+def test_default_formal_results_dir_is_v2() -> None:
+    assert DEFAULT_FAIR_RESULTS_DIR.as_posix().endswith("results/fair_comparison_v2")
+
+
 def test_showcase_data_json_valid(showcase_dir: Path) -> None:
     data = read_json(showcase_dir / "showcase_data.json")
 
     assert "case_entry" in data
     assert "memory_explorer" in data
+    assert "free_question_demo" in data
+    assert len(data["fixed_cases"]) == 9
+    assert {
+        "temporary_invalidation",
+        "permanent_supersede",
+        "historical_change",
+    }.issubset({case["case_id"] for case in data["fixed_cases"]})
+    assert {
+        "S103_work_role",
+        "S106_running_injury",
+        "S108_caffeine_medication",
+        "S111_business_trip_return",
+        "S120_reading_format_distractors",
+        "S125_weather_commute",
+    }.issubset({case["source_scenario"] for case in data["fixed_cases"]})
     assert data["memory_explorer"]["resource_panel"]["cloud_api_calls"] == 0
+    assert data["free_question_demo"]["enabled"] is True
+    assert data["free_question_demo"]["top_k"] == 3
+    assert "results/fair_comparison_v2" in data["free_question_demo"]["retrieval_boundary_zh"]
+
+
+def test_free_question_demo_is_labeled_illustrative_only(showcase_dir: Path) -> None:
+    html = (showcase_dir / "index.html").read_text(encoding="utf-8")
+
+    assert "自由提问区仅用于展示检索策略差异" in html
+    assert "Free question demo is illustrative only" in html
+    assert "results/fair_comparison_v2" in html
+    assert "No Memory baseline" in html
+    assert "MemoryBank flat retrieval demo" in html
+    assert "StateBudgetMem-style scoped retrieval demo" in html
+    assert "query type heuristic" in html
+    assert "retrieved memory ids" in html
+    assert "token proxy" in html
+    assert "latency" in html
+
+
+def test_free_question_demo_defaults_to_template_with_optional_deepseek(
+    showcase_dir: Path,
+) -> None:
+    data = read_json(showcase_dir / "showcase_data.json")
+    demo = data["free_question_demo"]
+
+    assert demo["answerer"] == "browser_template_answerer"
+    assert demo["deepseek_server_endpoint"] == "/api/free-question-answer"
+    assert demo["deepseek_default_model"] == "deepseek-chat"
+    assert "Template answers are the default" in demo["llm_policy"]
+
+
+def test_free_question_deepseek_ui_is_labeled_demo_only(showcase_dir: Path) -> None:
+    html = (showcase_dir / "index.html").read_text(encoding="utf-8")
+
+    assert "DeepSeek API via local demo server" in html
+    assert "deepseek-api-key" in html
+    assert "不保存" in html
+    assert "/api/free-question-answer" in html
+    assert "Demo-only generated answers" not in html
+
+
+def test_free_question_current_scope_excludes_historical_memories(
+    showcase_dir: Path,
+) -> None:
+    html = (showcase_dir / "index.html").read_text(encoding="utf-8")
+
+    assert "if (heuristic.queryType === 'CURRENT') return status === 'CURRENT';" in html
+    assert "当前有效状态是" in html
 
 
 def test_dashboard_data_json_valid(showcase_dir: Path) -> None:

@@ -1,0 +1,2685 @@
+{
+  "case_entry": {
+    "answers": [
+      {
+        "answer": "可以选择微辣，因为你平时能接受微辣。",
+        "cited_memory_ids": [
+          "S105_M1"
+        ],
+        "method": "MemoryBank baseline",
+        "risk": "MemoryBank 容易把“平时可以微辣”当成今天仍然有效。"
+      },
+      {
+        "answer": "模板回答：根据检索上下文和该数据集的参考答案，可回答为：今天处在术后禁辣期，应选择不辣或清淡口味。",
+        "answerer_type": "template",
+        "cited_memory_ids": [
+          "S105_M2"
+        ],
+        "method": "StateBudgetMem",
+        "model_name": "deterministic_template_v1",
+        "risk": "StateBudgetMem 将长期偏好保留为历史/底层状态，并把临时禁辣标为当前有效约束。"
+      }
+    ],
+    "claim_boundary": "This dialogue is an entry case for explanation. It is not used as a formal performance metric.",
+    "conversation": [
+      {
+        "memory_id": "S105_M1",
+        "speaker": "user",
+        "text": "用户平时可以接受微辣口味。",
+        "time": "2026-01-12"
+      },
+      {
+        "memory_id": "S105_M2",
+        "speaker": "user",
+        "text": "口腔手术后，医生要求六月二十日至七月五日避免辣味食物。",
+        "time": "2026-06-20"
+      },
+      {
+        "memory_id": "S105_Q_CURRENT",
+        "speaker": "user",
+        "text": "今天点菜时辣度应该怎么选？",
+        "time": "2026-06-29"
+      }
+    ],
+    "label": "Demo-only entrance"
+  },
+  "fixed_cases": [
+    {
+      "case_id": "temporary_invalidation",
+      "conversation": [
+        {
+          "memory_id": "S105_M1",
+          "speaker": "user",
+          "text": "用户平时可以接受微辣口味。",
+          "time": "2026-01-12"
+        },
+        {
+          "memory_id": "S105_M2",
+          "speaker": "user",
+          "text": "口腔手术后，医生要求六月二十日至七月五日避免辣味食物。",
+          "time": "2026-06-20"
+        },
+        {
+          "memory_id": "S105_Q_CURRENT",
+          "speaker": "user",
+          "text": "今天点菜时辣度应该怎么选？",
+          "time": "2026-06-29"
+        }
+      ],
+      "failure_mode": "MemoryBank 容易把“平时可以微辣”当成今天仍然有效。",
+      "label": "临时失效：口腔手术后暂时禁辣",
+      "label_en": "Temporary invalidation",
+      "label_note": "Showcase and analysis tool, not a formal experiment",
+      "memories": [
+        {
+          "memory_id": "S105_M1",
+          "operation": "ADD",
+          "status_by_change_query": "HISTORICAL",
+          "status_by_current_query": "STALE",
+          "status_by_historical_query": "CURRENT",
+          "text": "用户平时可以接受微辣口味。",
+          "time": "2026-01-12",
+          "token_cost": 8,
+          "valid_from": "2026-01-12",
+          "valid_to": null
+        },
+        {
+          "memory_id": "S105_M2",
+          "operation": "TEMP_INVALIDATE",
+          "status_by_change_query": "CURRENT",
+          "status_by_current_query": "CURRENT",
+          "status_by_historical_query": "STALE",
+          "temporarily_invalidates": [
+            "S105_M1"
+          ],
+          "text": "口腔手术后，医生要求用户六月二十日至七月五日避免辣味食物。",
+          "time": "2026-06-20",
+          "token_cost": 17,
+          "valid_from": "2026-06-20",
+          "valid_to": "2026-07-05"
+        },
+        {
+          "memory_id": "S105_M3",
+          "operation": "ADD",
+          "status_by_change_query": "HISTORICAL",
+          "status_by_current_query": "HISTORICAL",
+          "status_by_historical_query": "HISTORICAL",
+          "text": "用户一直很喜欢川菜的香味。",
+          "time": "2026-02-01",
+          "token_cost": 8,
+          "valid_from": "2026-02-01",
+          "valid_to": null
+        }
+      ],
+      "queries": [
+        {
+          "answer_memory_ids": [
+            "S105_M2"
+          ],
+          "answerer_result": {
+            "answer_text": "模板回答：根据检索上下文和该数据集的参考答案，可回答为：今天处在术后禁辣期，应选择不辣或清淡口味。",
+            "answerer_type": "template",
+            "generated_tokens": 49,
+            "latency_ms": 0.0024000000848900527,
+            "metadata": {
+              "cloud_api_calls": 0,
+              "generated_token_field": "generated_token_proxy",
+              "local_only": true,
+              "prompt_token_field": "prompt_token_proxy",
+              "tokenizer": "proxy"
+            },
+            "model_name": "deterministic_template_v1",
+            "prompt_tokens": 70,
+            "tokens_per_second": 20416665.94451173,
+            "used_memory_ids": [
+              "S105_M2"
+            ]
+          },
+          "answerer_type": "template",
+          "memorybank_retrieved": [
+            "S105_M1",
+            "S105_M2",
+            "S105_M3"
+          ],
+          "memorybank_wrong_answer": "可以选择微辣，因为你平时能接受微辣。",
+          "model_name": "deterministic_template_v1",
+          "query_id": "S105_Q_CURRENT",
+          "query_type": "CURRENT",
+          "statebudgetmem_answer": "模板回答：根据检索上下文和该数据集的参考答案，可回答为：今天处在术后禁辣期，应选择不辣或清淡口味。",
+          "statebudgetmem_retrieved": [
+            "S105_M2"
+          ],
+          "template_answer": "模板回答：根据检索上下文和该数据集的参考答案，可回答为：今天处在术后禁辣期，应选择不辣或清淡口味。",
+          "text": "今天点菜时辣度应该怎么选？"
+        },
+        {
+          "answer_memory_ids": [
+            "S105_M1"
+          ],
+          "answerer_result": {
+            "answer_text": "模板回答：根据检索上下文和该数据集的参考答案，可回答为：五月中旬还未进入术后禁辣期，历史状态是可以接受微辣。",
+            "answerer_type": "template",
+            "generated_tokens": 54,
+            "latency_ms": 0.0012000000424450263,
+            "metadata": {
+              "cloud_api_calls": 0,
+              "generated_token_field": "generated_token_proxy",
+              "local_only": true,
+              "prompt_token_field": "prompt_token_proxy",
+              "tokenizer": "proxy"
+            },
+            "model_name": "deterministic_template_v1",
+            "prompt_tokens": 69,
+            "tokens_per_second": 44999998.40831157,
+            "used_memory_ids": [
+              "S105_M1",
+              "S105_M3"
+            ]
+          },
+          "answerer_type": "template",
+          "memorybank_retrieved": [
+            "S105_M2",
+            "S105_M1",
+            "S105_M3"
+          ],
+          "memorybank_wrong_answer": "五月中旬也应避免辣味食物。",
+          "model_name": "deterministic_template_v1",
+          "query_id": "S105_Q_HISTORICAL",
+          "query_type": "HISTORICAL",
+          "statebudgetmem_answer": "模板回答：根据检索上下文和该数据集的参考答案，可回答为：五月中旬还未进入术后禁辣期，历史状态是可以接受微辣。",
+          "statebudgetmem_retrieved": [
+            "S105_M1",
+            "S105_M3"
+          ],
+          "template_answer": "模板回答：根据检索上下文和该数据集的参考答案，可回答为：五月中旬还未进入术后禁辣期，历史状态是可以接受微辣。",
+          "text": "五月中旬我能接受什么辣度？"
+        },
+        {
+          "answer_memory_ids": [
+            "S105_M1",
+            "S105_M2"
+          ],
+          "answerer_result": {
+            "answer_text": "模板回答：根据检索上下文和该数据集的参考答案，可回答为：原本可以微辣，但术后医生要求短期禁辣，所以当前状态被临时覆盖。",
+            "answerer_type": "template",
+            "generated_tokens": 59,
+            "latency_ms": 0.0006000000212225132,
+            "metadata": {
+              "cloud_api_calls": 0,
+              "generated_token_field": "generated_token_proxy",
+              "local_only": true,
+              "prompt_token_field": "prompt_token_proxy",
+              "tokenizer": "proxy"
+            },
+            "model_name": "deterministic_template_v1",
+            "prompt_tokens": 89,
+            "tokens_per_second": 98333329.85519935,
+            "used_memory_ids": [
+              "S105_M1",
+              "S105_M2"
+            ]
+          },
+          "answerer_type": "template",
+          "memorybank_retrieved": [
+            "S105_M1",
+            "S105_M2",
+            "S105_M3"
+          ],
+          "memorybank_wrong_answer": "你一直喜欢微辣，没有明显变化。",
+          "model_name": "deterministic_template_v1",
+          "query_id": "S105_Q_CHANGE",
+          "query_type": "CHANGE",
+          "statebudgetmem_answer": "模板回答：根据检索上下文和该数据集的参考答案，可回答为：原本可以微辣，但术后医生要求短期禁辣，所以当前状态被临时覆盖。",
+          "statebudgetmem_retrieved": [
+            "S105_M1",
+            "S105_M2"
+          ],
+          "template_answer": "模板回答：根据检索上下文和该数据集的参考答案，可回答为：原本可以微辣，但术后医生要求短期禁辣，所以当前状态被临时覆盖。",
+          "text": "我的辣度状态为什么暂时发生了变化？"
+        }
+      ],
+      "resource_panel": {
+        "answerer_requested": "template",
+        "answerer_type": "template",
+        "cloud_api_calls": 0,
+        "embedding": "sentence-transformers/all-MiniLM-L6-v2",
+        "generated_tokens": 49,
+        "generation_latency_ms": 0.0024000000848900527,
+        "local_llm_endpoint": null,
+        "local_llm_unavailable_reason": null,
+        "local_only": true,
+        "memory_count": 2000,
+        "model_name": "deterministic_template_v1",
+        "prompt_tokens": 70,
+        "retrieval_latency_ms": 0.30215833333333336,
+        "storage": "local JSONL / metadata / embedding files",
+        "storage_bytes": 7394472.0,
+        "token_budget": 256,
+        "token_proxy_metric": "memory_record_token_cost / prompt token proxy",
+        "tokens_per_second": 20416665.94451173,
+        "vector_index": "local FAISS IndexFlatIP"
+      },
+      "source_scenario": "S105_spicy_oral_surgery",
+      "thesis": "长期偏好没有消失，但当前问题必须优先使用临时健康限制。",
+      "why_statebudgetmem": "StateBudgetMem 将长期偏好保留为历史/底层状态，并把临时禁辣标为当前有效约束。"
+    },
+    {
+      "case_id": "permanent_supersede",
+      "conversation": [
+        {
+          "memory_id": "S101_M1",
+          "speaker": "user",
+          "text": "今年一月至三月，用户工作日通常自己开车去公司。",
+          "time": "2026-01-03"
+        },
+        {
+          "memory_id": "S101_M2",
+          "speaker": "user",
+          "text": "从四月开始，用户工作日改为乘地铁上下班。",
+          "time": "2026-04-01"
+        },
+        {
+          "memory_id": "S101_Q_CURRENT",
+          "speaker": "user",
+          "text": "我现在工作日上班主要怎么去？",
+          "time": "2026-06-29"
+        }
+      ],
+      "failure_mode": "MemoryBank 可能同时召回开车和地铁，并把旧自驾习惯混入当前答案。",
+      "label": "永久替代：通勤方式从自驾改为地铁",
+      "label_en": "Permanent supersede",
+      "label_note": "Showcase and analysis tool, not a formal experiment",
+      "memories": [
+        {
+          "memory_id": "S101_M1",
+          "operation": "ADD",
+          "status_by_change_query": "HISTORICAL",
+          "status_by_current_query": "STALE",
+          "status_by_historical_query": "CURRENT",
+          "text": "今年一月至三月，用户工作日通常自己开车去公司。",
+          "time": "2026-01-03",
+          "token_cost": 13,
+          "valid_from": "2026-01-03",
+          "valid_to": "2026-03-31"
+        },
+        {
+          "memory_id": "S101_M2",
+          "operation": "SUPERSEDE",
+          "status_by_change_query": "CURRENT",
+          "status_by_current_query": "CURRENT",
+          "status_by_historical_query": "STALE",
+          "supersedes": [
+            "S101_M1"
+          ],
+          "text": "从四月开始，用户工作日改为乘地铁上下班。",
+          "time": "2026-04-01",
+          "token_cost": 12,
+          "valid_from": "2026-04-01",
+          "valid_to": null
+        },
+        {
+          "memory_id": "S101_M3",
+          "operation": "ADD",
+          "status_by_change_query": "HISTORICAL",
+          "status_by_current_query": "HISTORICAL",
+          "status_by_historical_query": "HISTORICAL",
+          "text": "周末采购较多时，用户仍会开车去超市。",
+          "time": "2026-04-06",
+          "token_cost": 10,
+          "valid_from": "2026-04-06",
+          "valid_to": null
+        }
+      ],
+      "queries": [
+        {
+          "answer_memory_ids": [
+            "S101_M2"
+          ],
+          "answerer_result": {
+            "answer_text": "模板回答：根据检索上下文和该数据集的参考答案，可回答为：现在工作日主要乘地铁上下班。",
+            "answerer_type": "template",
+            "generated_tokens": 42,
+            "latency_ms": 0.0005000001692678779,
+            "metadata": {
+              "cloud_api_calls": 0,
+              "generated_token_field": "generated_token_proxy",
+              "local_only": true,
+              "prompt_token_field": "prompt_token_proxy",
+              "tokenizer": "proxy"
+            },
+            "model_name": "deterministic_template_v1",
+            "prompt_tokens": 62,
+            "tokens_per_second": 83999971.56300613,
+            "used_memory_ids": [
+              "S101_M2"
+            ]
+          },
+          "answerer_type": "template",
+          "memorybank_retrieved": [
+            "S101_M2",
+            "S101_M1",
+            "S101_M3"
+          ],
+          "memorybank_wrong_answer": "你工作日通常自己开车去公司。",
+          "model_name": "deterministic_template_v1",
+          "query_id": "S101_Q_CURRENT",
+          "query_type": "CURRENT",
+          "statebudgetmem_answer": "模板回答：根据检索上下文和该数据集的参考答案，可回答为：现在工作日主要乘地铁上下班。",
+          "statebudgetmem_retrieved": [
+            "S101_M2"
+          ],
+          "template_answer": "模板回答：根据检索上下文和该数据集的参考答案，可回答为：现在工作日主要乘地铁上下班。",
+          "text": "我现在工作日上班主要怎么去？"
+        },
+        {
+          "answer_memory_ids": [
+            "S101_M1"
+          ],
+          "answerer_result": {
+            "answer_text": "模板回答：根据检索上下文和该数据集的参考答案，可回答为：二月份的历史状态是工作日通常自己开车去公司。",
+            "answerer_type": "template",
+            "generated_tokens": 50,
+            "latency_ms": 0.0004999992597731762,
+            "metadata": {
+              "cloud_api_calls": 0,
+              "generated_token_field": "generated_token_proxy",
+              "local_only": true,
+              "prompt_token_field": "prompt_token_proxy",
+              "tokenizer": "proxy"
+            },
+            "model_name": "deterministic_template_v1",
+            "prompt_tokens": 66,
+            "tokens_per_second": 100000148.04558395,
+            "used_memory_ids": [
+              "S101_M1"
+            ]
+          },
+          "answerer_type": "template",
+          "memorybank_retrieved": [
+            "S101_M2",
+            "S101_M3",
+            "S101_M1"
+          ],
+          "memorybank_wrong_answer": "二月份你已经主要坐地铁。",
+          "model_name": "deterministic_template_v1",
+          "query_id": "S101_Q_HISTORICAL",
+          "query_type": "HISTORICAL",
+          "statebudgetmem_answer": "模板回答：根据检索上下文和该数据集的参考答案，可回答为：二月份的历史状态是工作日通常自己开车去公司。",
+          "statebudgetmem_retrieved": [
+            "S101_M1"
+          ],
+          "template_answer": "模板回答：根据检索上下文和该数据集的参考答案，可回答为：二月份的历史状态是工作日通常自己开车去公司。",
+          "text": "二月份我工作日通常怎么去公司？"
+        },
+        {
+          "answer_memory_ids": [
+            "S101_M1",
+            "S101_M2"
+          ],
+          "answerer_result": {
+            "answer_text": "模板回答：根据检索上下文和该数据集的参考答案，可回答为：一月至三月主要自驾，四月起永久改为地铁通勤。",
+            "answerer_type": "template",
+            "generated_tokens": 50,
+            "latency_ms": 0.00020000061340397224,
+            "metadata": {
+              "cloud_api_calls": 0,
+              "generated_token_field": "generated_token_proxy",
+              "local_only": true,
+              "prompt_token_field": "prompt_token_proxy",
+              "tokenizer": "proxy"
+            },
+            "model_name": "deterministic_template_v1",
+            "prompt_tokens": 90,
+            "tokens_per_second": 249999233.24738634,
+            "used_memory_ids": [
+              "S101_M1",
+              "S101_M2"
+            ]
+          },
+          "answerer_type": "template",
+          "memorybank_retrieved": [
+            "S101_M1",
+            "S101_M2",
+            "S101_M3"
+          ],
+          "memorybank_wrong_answer": "你既开车也坐地铁，无法看出变化。",
+          "model_name": "deterministic_template_v1",
+          "query_id": "S101_Q_CHANGE",
+          "query_type": "CHANGE",
+          "statebudgetmem_answer": "模板回答：根据检索上下文和该数据集的参考答案，可回答为：一月至三月主要自驾，四月起永久改为地铁通勤。",
+          "statebudgetmem_retrieved": [
+            "S101_M1",
+            "S101_M2"
+          ],
+          "template_answer": "模板回答：根据检索上下文和该数据集的参考答案，可回答为：一月至三月主要自驾，四月起永久改为地铁通勤。",
+          "text": "我的工作日通勤方式发生了什么变化？"
+        }
+      ],
+      "resource_panel": {
+        "answerer_requested": "template",
+        "answerer_type": "template",
+        "cloud_api_calls": 0,
+        "embedding": "sentence-transformers/all-MiniLM-L6-v2",
+        "generated_tokens": 49,
+        "generation_latency_ms": 0.0024000000848900527,
+        "local_llm_endpoint": null,
+        "local_llm_unavailable_reason": null,
+        "local_only": true,
+        "memory_count": 2000,
+        "model_name": "deterministic_template_v1",
+        "prompt_tokens": 70,
+        "retrieval_latency_ms": 0.30215833333333336,
+        "storage": "local JSONL / metadata / embedding files",
+        "storage_bytes": 7394472.0,
+        "token_budget": 256,
+        "token_proxy_metric": "memory_record_token_cost / prompt token proxy",
+        "tokens_per_second": 20416665.94451173,
+        "vector_index": "local FAISS IndexFlatIP"
+      },
+      "source_scenario": "S101_commute_mode",
+      "thesis": "新状态永久替代旧状态，当前推荐不能再使用旧通勤方式。",
+      "why_statebudgetmem": "StateBudgetMem 用 SUPERSEDE 关闭旧状态的当前有效期，但仍允许历史查询访问它。"
+    },
+    {
+      "case_id": "historical_change",
+      "conversation": [
+        {
+          "memory_id": "S102_M1",
+          "speaker": "user",
+          "text": "一月至四月，用户的主力手机是一部安卓手机。",
+          "time": "2026-01-08"
+        },
+        {
+          "memory_id": "S102_M2",
+          "speaker": "user",
+          "text": "五月起，用户把 iPhone 设为日常使用的主力手机。",
+          "time": "2026-05-01"
+        },
+        {
+          "memory_id": "S102_Q_HISTORICAL",
+          "speaker": "user",
+          "text": "三月份我的主力手机是什么系统？",
+          "time": "2026-03-15"
+        }
+      ],
+      "failure_mode": "MemoryBank 只看语义相似，容易把五月后的 iPhone 状态用于三月份历史问题。",
+      "label": "历史/变化查询：手机平台从安卓换成 iPhone",
+      "label_en": "Historical and change query",
+      "label_note": "Showcase and analysis tool, not a formal experiment",
+      "memories": [
+        {
+          "memory_id": "S102_M1",
+          "operation": "ADD",
+          "status_by_change_query": "HISTORICAL",
+          "status_by_current_query": "STALE",
+          "status_by_historical_query": "CURRENT",
+          "text": "一月至四月，用户的主力手机是一部安卓手机。",
+          "time": "2026-01-08",
+          "token_cost": 12,
+          "valid_from": "2026-01-08",
+          "valid_to": "2026-04-30"
+        },
+        {
+          "memory_id": "S102_M2",
+          "operation": "SUPERSEDE",
+          "status_by_change_query": "CURRENT",
+          "status_by_current_query": "CURRENT",
+          "status_by_historical_query": "STALE",
+          "supersedes": [
+            "S102_M1"
+          ],
+          "text": "五月起，用户把 iPhone 设为日常使用的主力手机。",
+          "time": "2026-05-01",
+          "token_cost": 16,
+          "valid_from": "2026-05-01",
+          "valid_to": null
+        },
+        {
+          "memory_id": "S102_M3",
+          "operation": "ADD",
+          "status_by_change_query": "HISTORICAL",
+          "status_by_current_query": "HISTORICAL",
+          "status_by_historical_query": "HISTORICAL",
+          "text": "用户家里的平板仍然使用安卓系统。",
+          "time": "2026-02-12",
+          "token_cost": 9,
+          "valid_from": "2026-02-12",
+          "valid_to": null
+        }
+      ],
+      "queries": [
+        {
+          "answer_memory_ids": [
+            "S102_M1"
+          ],
+          "answerer_result": {
+            "answer_text": "模板回答：根据检索上下文和该数据集的参考答案，可回答为：三月份的历史状态是主力手机为安卓。",
+            "answerer_type": "template",
+            "generated_tokens": 45,
+            "latency_ms": 0.00030000046535860747,
+            "metadata": {
+              "cloud_api_calls": 0,
+              "generated_token_field": "generated_token_proxy",
+              "local_only": true,
+              "prompt_token_field": "prompt_token_proxy",
+              "tokenizer": "proxy"
+            },
+            "model_name": "deterministic_template_v1",
+            "prompt_tokens": 64,
+            "tokens_per_second": 149999767.3210572,
+            "used_memory_ids": [
+              "S102_M1"
+            ]
+          },
+          "answerer_type": "template",
+          "memorybank_retrieved": [
+            "S102_M2",
+            "S102_M1",
+            "S102_M3"
+          ],
+          "memorybank_wrong_answer": "三月份你的主力手机是 iPhone。",
+          "model_name": "deterministic_template_v1",
+          "query_id": "S102_Q_HISTORICAL",
+          "query_type": "HISTORICAL",
+          "statebudgetmem_answer": "模板回答：根据检索上下文和该数据集的参考答案，可回答为：三月份的历史状态是主力手机为安卓。",
+          "statebudgetmem_retrieved": [
+            "S102_M1"
+          ],
+          "template_answer": "模板回答：根据检索上下文和该数据集的参考答案，可回答为：三月份的历史状态是主力手机为安卓。",
+          "text": "三月份我的主力手机是什么系统？"
+        },
+        {
+          "answer_memory_ids": [
+            "S102_M2"
+          ],
+          "answerer_result": {
+            "answer_text": "模板回答：根据检索上下文和该数据集的参考答案，可回答为：现在的主力手机是 iPhone / iOS。",
+            "answerer_type": "template",
+            "generated_tokens": 39,
+            "latency_ms": 0.0004000003173132427,
+            "metadata": {
+              "cloud_api_calls": 0,
+              "generated_token_field": "generated_token_proxy",
+              "local_only": true,
+              "prompt_token_field": "prompt_token_proxy",
+              "tokenizer": "proxy"
+            },
+            "model_name": "deterministic_template_v1",
+            "prompt_tokens": 62,
+            "tokens_per_second": 97499922.65495844,
+            "used_memory_ids": [
+              "S102_M2"
+            ]
+          },
+          "answerer_type": "template",
+          "memorybank_retrieved": [
+            "S102_M1",
+            "S102_M2",
+            "S102_M3"
+          ],
+          "memorybank_wrong_answer": "你现在的主力手机仍是安卓。",
+          "model_name": "deterministic_template_v1",
+          "query_id": "S102_Q_CURRENT",
+          "query_type": "CURRENT",
+          "statebudgetmem_answer": "模板回答：根据检索上下文和该数据集的参考答案，可回答为：现在的主力手机是 iPhone / iOS。",
+          "statebudgetmem_retrieved": [
+            "S102_M2"
+          ],
+          "template_answer": "模板回答：根据检索上下文和该数据集的参考答案，可回答为：现在的主力手机是 iPhone / iOS。",
+          "text": "我现在的主力手机用什么系统？"
+        },
+        {
+          "answer_memory_ids": [
+            "S102_M1",
+            "S102_M2"
+          ],
+          "answerer_result": {
+            "answer_text": "模板回答：根据检索上下文和该数据集的参考答案，可回答为：一月至四月主力手机是安卓，五月起更换为 iPhone。",
+            "answerer_type": "template",
+            "generated_tokens": 49,
+            "latency_ms": 0.00019999970390927047,
+            "metadata": {
+              "cloud_api_calls": 0,
+              "generated_token_field": "generated_token_proxy",
+              "local_only": true,
+              "prompt_token_field": "prompt_token_proxy",
+              "tokenizer": "proxy"
+            },
+            "model_name": "deterministic_template_v1",
+            "prompt_tokens": 86,
+            "tokens_per_second": 245000362.71168065,
+            "used_memory_ids": [
+              "S102_M1",
+              "S102_M2"
+            ]
+          },
+          "answerer_type": "template",
+          "memorybank_retrieved": [
+            "S102_M1",
+            "S102_M2",
+            "S102_M3"
+          ],
+          "memorybank_wrong_answer": "你一直同时使用安卓和 iPhone。",
+          "model_name": "deterministic_template_v1",
+          "query_id": "S102_Q_CHANGE",
+          "query_type": "CHANGE",
+          "statebudgetmem_answer": "模板回答：根据检索上下文和该数据集的参考答案，可回答为：一月至四月主力手机是安卓，五月起更换为 iPhone。",
+          "statebudgetmem_retrieved": [
+            "S102_M1",
+            "S102_M2"
+          ],
+          "template_answer": "模板回答：根据检索上下文和该数据集的参考答案，可回答为：一月至四月主力手机是安卓，五月起更换为 iPhone。",
+          "text": "我的主力手机平台是怎么更换的？"
+        }
+      ],
+      "resource_panel": {
+        "answerer_requested": "template",
+        "answerer_type": "template",
+        "cloud_api_calls": 0,
+        "embedding": "sentence-transformers/all-MiniLM-L6-v2",
+        "generated_tokens": 49,
+        "generation_latency_ms": 0.0024000000848900527,
+        "local_llm_endpoint": null,
+        "local_llm_unavailable_reason": null,
+        "local_only": true,
+        "memory_count": 2000,
+        "model_name": "deterministic_template_v1",
+        "prompt_tokens": 70,
+        "retrieval_latency_ms": 0.30215833333333336,
+        "storage": "local JSONL / metadata / embedding files",
+        "storage_bytes": 7394472.0,
+        "token_budget": 256,
+        "token_proxy_metric": "memory_record_token_cost / prompt token proxy",
+        "tokens_per_second": 20416665.94451173,
+        "vector_index": "local FAISS IndexFlatIP"
+      },
+      "source_scenario": "S102_phone_platform",
+      "thesis": "同一条旧记忆对当前问题是过期信息，对历史问题却是正确证据。",
+      "why_statebudgetmem": "StateBudgetMem 先路由到历史视图，再按 reference_time 取当时有效状态。"
+    },
+    {
+      "case_id": "dataset_S103_work_role",
+      "conversation": [
+        {
+          "memory_id": "S103_work_role_M1",
+          "speaker": "user",
+          "text": "年初时，用户的主要岗位是后端开发工程师。",
+          "time": "2026-01-05"
+        },
+        {
+          "memory_id": "S103_work_role_M2",
+          "speaker": "user",
+          "text": "四月十五日起，用户正式转岗为数据分析师。",
+          "time": "2026-04-15"
+        },
+        {
+          "memory_id": "S103_work_role_M3",
+          "speaker": "user",
+          "text": "用户每月仍需协助一次旧后端服务的维护。",
+          "time": "2026-04-20"
+        },
+        {
+          "memory_id": "S103_work_role_M4",
+          "speaker": "user",
+          "text": "用户正在学习高级 SQL 查询课程。",
+          "time": "2026-05-06"
+        },
+        {
+          "memory_id": "S103_work_role_Q_CURRENT",
+          "speaker": "user",
+          "text": "我现在的主要工作岗位是什么？",
+          "time": "2026-06-29"
+        }
+      ],
+      "failure_mode": "MemoryBank flat retrieval may mix old, current, and distractor records when they are semantically close.",
+      "label": "扩展场景：S103_work_role",
+      "label_en": "Formal dataset extension",
+      "label_note": "Extended case from data/controlled/temporal_challenge_v1.jsonl; showcase only, not a new formal result.",
+      "memories": [
+        {
+          "memory_id": "S103_work_role_M1",
+          "operation": "ADD/HISTORICAL",
+          "status_by_change_query": "CURRENT",
+          "status_by_current_query": "STALE",
+          "status_by_historical_query": "CURRENT",
+          "supersedes": [],
+          "temporarily_invalidates": [],
+          "text": "年初时，用户的主要岗位是后端开发工程师。",
+          "time": "2026-01-05",
+          "token_cost": 12,
+          "valid_from": "2026-01-05",
+          "valid_to": "2026-04-14"
+        },
+        {
+          "memory_id": "S103_work_role_M2",
+          "operation": "SUPERSEDE",
+          "status_by_change_query": "CURRENT",
+          "status_by_current_query": "CURRENT",
+          "status_by_historical_query": "STALE",
+          "supersedes": [
+            "S103_work_role_M1"
+          ],
+          "temporarily_invalidates": [],
+          "text": "四月十五日起，用户正式转岗为数据分析师。",
+          "time": "2026-04-15",
+          "token_cost": 12,
+          "valid_from": "2026-04-15",
+          "valid_to": null
+        },
+        {
+          "memory_id": "S103_work_role_M3",
+          "operation": "ADD",
+          "status_by_change_query": "HISTORICAL",
+          "status_by_current_query": "HISTORICAL",
+          "status_by_historical_query": "HISTORICAL",
+          "supersedes": [],
+          "temporarily_invalidates": [],
+          "text": "用户每月仍需协助一次旧后端服务的维护。",
+          "time": "2026-04-20",
+          "token_cost": 11,
+          "valid_from": "2026-04-20",
+          "valid_to": null
+        },
+        {
+          "memory_id": "S103_work_role_M4",
+          "operation": "ADD",
+          "status_by_change_query": "HISTORICAL",
+          "status_by_current_query": "HISTORICAL",
+          "status_by_historical_query": "HISTORICAL",
+          "supersedes": [],
+          "temporarily_invalidates": [],
+          "text": "用户正在学习高级 SQL 查询课程。",
+          "time": "2026-05-06",
+          "token_cost": 10,
+          "valid_from": "2026-05-06",
+          "valid_to": null
+        },
+        {
+          "memory_id": "S103_work_role_M5",
+          "operation": "ADD",
+          "status_by_change_query": "HISTORICAL",
+          "status_by_current_query": "HISTORICAL",
+          "status_by_historical_query": "HISTORICAL",
+          "supersedes": [],
+          "temporarily_invalidates": [],
+          "text": "用户目前加入了公司的洞察分析组。",
+          "time": "2026-04-15",
+          "token_cost": 9,
+          "valid_from": "2026-04-15",
+          "valid_to": null
+        },
+        {
+          "memory_id": "S103_work_role_M6",
+          "operation": "ADD",
+          "status_by_change_query": "HISTORICAL",
+          "status_by_current_query": "HISTORICAL",
+          "status_by_historical_query": "HISTORICAL",
+          "supersedes": [],
+          "temporarily_invalidates": [],
+          "text": "用户工作日午餐通常选择清淡套餐。",
+          "time": "2026-02-01",
+          "token_cost": 9,
+          "valid_from": "2026-02-01",
+          "valid_to": null
+        }
+      ],
+      "queries": [
+        {
+          "answer_memory_ids": [
+            "S103_work_role_M2"
+          ],
+          "answerer_result": {
+            "answer_text": "模板回答：根据检索上下文和该数据集的参考答案，可回答为：根据有效记忆 S103_work_role_M2，可回答：四月十五日起，用户正式转岗为数据分析师。",
+            "answerer_type": "template",
+            "generated_tokens": 63,
+            "latency_ms": 0.0002999995558639057,
+            "metadata": {
+              "cloud_api_calls": 0,
+              "generated_token_field": "generated_token_proxy",
+              "local_only": true,
+              "prompt_token_field": "prompt_token_proxy",
+              "tokenizer": "proxy"
+            },
+            "model_name": "deterministic_template_v1",
+            "prompt_tokens": 111,
+            "tokens_per_second": 210000310.89572626,
+            "used_memory_ids": [
+              "S103_work_role_M2",
+              "S103_work_role_M1",
+              "S103_work_role_M3"
+            ]
+          },
+          "answerer_type": "template",
+          "memorybank_retrieved": [
+            "S103_work_role_M1",
+            "S103_work_role_M2",
+            "S103_work_role_M3"
+          ],
+          "memorybank_wrong_answer": "如果优先引用旧记忆或干扰记忆，回答可能与当前/历史视图不一致。",
+          "model_name": "deterministic_template_v1",
+          "query_id": "S103_work_role_Q_CURRENT",
+          "query_type": "CURRENT",
+          "statebudgetmem_answer": "模板回答：根据检索上下文和该数据集的参考答案，可回答为：根据有效记忆 S103_work_role_M2，可回答：四月十五日起，用户正式转岗为数据分析师。",
+          "statebudgetmem_retrieved": [
+            "S103_work_role_M2",
+            "S103_work_role_M1",
+            "S103_work_role_M3"
+          ],
+          "template_answer": "模板回答：根据检索上下文和该数据集的参考答案，可回答为：根据有效记忆 S103_work_role_M2，可回答：四月十五日起，用户正式转岗为数据分析师。",
+          "text": "我现在的主要工作岗位是什么？"
+        },
+        {
+          "answer_memory_ids": [
+            "S103_work_role_M1"
+          ],
+          "answerer_result": {
+            "answer_text": "模板回答：根据检索上下文和该数据集的参考答案，可回答为：根据有效记忆 S103_work_role_M1，可回答：年初时，用户的主要岗位是后端开发工程师。",
+            "answerer_type": "template",
+            "generated_tokens": 63,
+            "latency_ms": 0.00019999970390927047,
+            "metadata": {
+              "cloud_api_calls": 0,
+              "generated_token_field": "generated_token_proxy",
+              "local_only": true,
+              "prompt_token_field": "prompt_token_proxy",
+              "tokenizer": "proxy"
+            },
+            "model_name": "deterministic_template_v1",
+            "prompt_tokens": 110,
+            "tokens_per_second": 315000466.3435894,
+            "used_memory_ids": [
+              "S103_work_role_M1",
+              "S103_work_role_M2",
+              "S103_work_role_M3"
+            ]
+          },
+          "answerer_type": "template",
+          "memorybank_retrieved": [
+            "S103_work_role_M2",
+            "S103_work_role_M1",
+            "S103_work_role_M3"
+          ],
+          "memorybank_wrong_answer": "如果优先引用旧记忆或干扰记忆，回答可能与当前/历史视图不一致。",
+          "model_name": "deterministic_template_v1",
+          "query_id": "S103_work_role_Q_HISTORICAL",
+          "query_type": "HISTORICAL",
+          "statebudgetmem_answer": "模板回答：根据检索上下文和该数据集的参考答案，可回答为：根据有效记忆 S103_work_role_M1，可回答：年初时，用户的主要岗位是后端开发工程师。",
+          "statebudgetmem_retrieved": [
+            "S103_work_role_M1",
+            "S103_work_role_M2",
+            "S103_work_role_M3"
+          ],
+          "template_answer": "模板回答：根据检索上下文和该数据集的参考答案，可回答为：根据有效记忆 S103_work_role_M1，可回答：年初时，用户的主要岗位是后端开发工程师。",
+          "text": "二月份我的主要岗位是什么？"
+        },
+        {
+          "answer_memory_ids": [
+            "S103_work_role_M1",
+            "S103_work_role_M2"
+          ],
+          "answerer_result": {
+            "answer_text": "模板回答：根据检索上下文和该数据集的参考答案，可回答为：根据有效记忆 S103_work_role_M1, S103_work_role_M2，可回答：年初时，用户的主要岗位是后端开发工程师。；四月十五日起，用户正式转岗为数据分析师。",
+            "answerer_type": "template",
+            "generated_tokens": 88,
+            "latency_ms": 0.00019999970390927047,
+            "metadata": {
+              "cloud_api_calls": 0,
+              "generated_token_field": "generated_token_proxy",
+              "local_only": true,
+              "prompt_token_field": "prompt_token_proxy",
+              "tokenizer": "proxy"
+            },
+            "model_name": "deterministic_template_v1",
+            "prompt_tokens": 89,
+            "tokens_per_second": 440000651.4005693,
+            "used_memory_ids": [
+              "S103_work_role_M1",
+              "S103_work_role_M2"
+            ]
+          },
+          "answerer_type": "template",
+          "memorybank_retrieved": [
+            "S103_work_role_M1",
+            "S103_work_role_M2",
+            "S103_work_role_M3"
+          ],
+          "memorybank_wrong_answer": "如果优先引用旧记忆或干扰记忆，回答可能与当前/历史视图不一致。",
+          "model_name": "deterministic_template_v1",
+          "query_id": "S103_work_role_Q_CHANGE",
+          "query_type": "CHANGE",
+          "statebudgetmem_answer": "模板回答：根据检索上下文和该数据集的参考答案，可回答为：根据有效记忆 S103_work_role_M1, S103_work_role_M2，可回答：年初时，用户的主要岗位是后端开发工程师。；四月十五日起，用户正式转岗为数据分析师。",
+          "statebudgetmem_retrieved": [
+            "S103_work_role_M1",
+            "S103_work_role_M2"
+          ],
+          "template_answer": "模板回答：根据检索上下文和该数据集的参考答案，可回答为：根据有效记忆 S103_work_role_M1, S103_work_role_M2，可回答：年初时，用户的主要岗位是后端开发工程师。；四月十五日起，用户正式转岗为数据分析师。",
+          "text": "我的工作岗位经历了怎样的变化？"
+        }
+      ],
+      "resource_panel": {
+        "answerer_requested": "template",
+        "answerer_type": "template",
+        "cloud_api_calls": 0,
+        "embedding": "sentence-transformers/all-MiniLM-L6-v2",
+        "generated_tokens": 49,
+        "generation_latency_ms": 0.0024000000848900527,
+        "local_llm_endpoint": null,
+        "local_llm_unavailable_reason": null,
+        "local_only": true,
+        "memory_count": 2000,
+        "model_name": "deterministic_template_v1",
+        "prompt_tokens": 70,
+        "retrieval_latency_ms": 0.30215833333333336,
+        "storage": "local JSONL / metadata / embedding files",
+        "storage_bytes": 7394472.0,
+        "token_budget": 256,
+        "token_proxy_metric": "memory_record_token_cost / prompt token proxy",
+        "tokens_per_second": 20416665.94451173,
+        "vector_index": "local FAISS IndexFlatIP"
+      },
+      "source_scenario": "S103_work_role",
+      "thesis": "岗位从后端开发永久转为数据分析，保留旧技术任务干扰。",
+      "why_statebudgetmem": "StateBudgetMem-style demo first applies query-type/view scoping, then retrieves from memories that are valid for that question view."
+    },
+    {
+      "case_id": "dataset_S106_running_injury",
+      "conversation": [
+        {
+          "memory_id": "S106_running_injury_M1",
+          "speaker": "user",
+          "text": "用户平时每周二和周四各跑五公里。",
+          "time": "2026-02-01"
+        },
+        {
+          "memory_id": "S106_running_injury_M2",
+          "speaker": "user",
+          "text": "六月十五日脚踝扭伤后，用户在七月十五日前暂停跑步。",
+          "time": "2026-06-15"
+        },
+        {
+          "memory_id": "S106_running_injury_M3",
+          "speaker": "user",
+          "text": "用户通常周日游泳四十分钟。",
+          "time": "2026-03-02"
+        },
+        {
+          "memory_id": "S106_running_injury_M4",
+          "speaker": "user",
+          "text": "用户五月买了一双新的跑鞋。",
+          "time": "2026-05-09"
+        },
+        {
+          "memory_id": "S106_running_injury_Q_CURRENT",
+          "speaker": "user",
+          "text": "这周我还能按原计划跑五公里吗？",
+          "time": "2026-06-29"
+        }
+      ],
+      "failure_mode": "MemoryBank flat retrieval may mix old, current, and distractor records when they are semantically close.",
+      "label": "扩展场景：S106_running_injury",
+      "label_en": "Formal dataset extension",
+      "label_note": "Extended case from data/controlled/temporal_challenge_v1.jsonl; showcase only, not a new formal result.",
+      "memories": [
+        {
+          "memory_id": "S106_running_injury_M1",
+          "operation": "ADD",
+          "status_by_change_query": "CURRENT",
+          "status_by_current_query": "STALE",
+          "status_by_historical_query": "CURRENT",
+          "supersedes": [],
+          "temporarily_invalidates": [],
+          "text": "用户平时每周二和周四各跑五公里。",
+          "time": "2026-02-01",
+          "token_cost": 9,
+          "valid_from": "2026-02-01",
+          "valid_to": null
+        },
+        {
+          "memory_id": "S106_running_injury_M2",
+          "operation": "TEMP_INVALIDATE",
+          "status_by_change_query": "CURRENT",
+          "status_by_current_query": "CURRENT",
+          "status_by_historical_query": "STALE",
+          "supersedes": [],
+          "temporarily_invalidates": [
+            "S106_running_injury_M1"
+          ],
+          "text": "六月十五日脚踝扭伤后，用户在七月十五日前暂停跑步。",
+          "time": "2026-06-15",
+          "token_cost": 14,
+          "valid_from": "2026-06-15",
+          "valid_to": "2026-07-15"
+        },
+        {
+          "memory_id": "S106_running_injury_M3",
+          "operation": "ADD",
+          "status_by_change_query": "HISTORICAL",
+          "status_by_current_query": "HISTORICAL",
+          "status_by_historical_query": "HISTORICAL",
+          "supersedes": [],
+          "temporarily_invalidates": [],
+          "text": "用户通常周日游泳四十分钟。",
+          "time": "2026-03-02",
+          "token_cost": 8,
+          "valid_from": "2026-03-02",
+          "valid_to": null
+        },
+        {
+          "memory_id": "S106_running_injury_M4",
+          "operation": "ADD",
+          "status_by_change_query": "HISTORICAL",
+          "status_by_current_query": "HISTORICAL",
+          "status_by_historical_query": "HISTORICAL",
+          "supersedes": [],
+          "temporarily_invalidates": [],
+          "text": "用户五月买了一双新的跑鞋。",
+          "time": "2026-05-09",
+          "token_cost": 8,
+          "valid_from": "2026-05-09",
+          "valid_to": null
+        },
+        {
+          "memory_id": "S106_running_injury_M5",
+          "operation": "ADD",
+          "status_by_change_query": "CURRENT",
+          "status_by_current_query": "CURRENT",
+          "status_by_historical_query": "HISTORICAL",
+          "supersedes": [],
+          "temporarily_invalidates": [],
+          "text": "恢复期间，用户每周三去做脚踝理疗。",
+          "time": "2026-06-18",
+          "token_cost": 10,
+          "valid_from": "2026-06-18",
+          "valid_to": "2026-07-15"
+        },
+        {
+          "memory_id": "S106_running_injury_M6",
+          "operation": "ADD",
+          "status_by_change_query": "HISTORICAL",
+          "status_by_current_query": "HISTORICAL",
+          "status_by_historical_query": "HISTORICAL",
+          "supersedes": [],
+          "temporarily_invalidates": [],
+          "text": "用户报名了九月的一场十公里比赛。",
+          "time": "2026-05-20",
+          "token_cost": 9,
+          "valid_from": "2026-05-20",
+          "valid_to": null
+        }
+      ],
+      "queries": [
+        {
+          "answer_memory_ids": [
+            "S106_running_injury_M2",
+            "S106_running_injury_M5"
+          ],
+          "answerer_result": {
+            "answer_text": "模板回答：根据检索上下文和该数据集的参考答案，可回答为：根据有效记忆 S106_running_injury_M2, S106_running_injury_M5，可回答：六月十五日脚踝扭伤后，用户在七月十五日前暂停跑步。；恢复期间，用户每周三去做脚踝理疗。",
+            "answerer_type": "template",
+            "generated_tokens": 90,
+            "latency_ms": 0.0010000003385357559,
+            "metadata": {
+              "cloud_api_calls": 0,
+              "generated_token_field": "generated_token_proxy",
+              "local_only": true,
+              "prompt_token_field": "prompt_token_proxy",
+              "tokenizer": "proxy"
+            },
+            "model_name": "deterministic_template_v1",
+            "prompt_tokens": 111,
+            "tokens_per_second": 89999969.53179228,
+            "used_memory_ids": [
+              "S106_running_injury_M2",
+              "S106_running_injury_M5",
+              "S106_running_injury_M1"
+            ]
+          },
+          "answerer_type": "template",
+          "memorybank_retrieved": [
+            "S106_running_injury_M1",
+            "S106_running_injury_M2",
+            "S106_running_injury_M5"
+          ],
+          "memorybank_wrong_answer": "如果优先引用旧记忆或干扰记忆，回答可能与当前/历史视图不一致。",
+          "model_name": "deterministic_template_v1",
+          "query_id": "S106_running_injury_Q_CURRENT",
+          "query_type": "CURRENT",
+          "statebudgetmem_answer": "模板回答：根据检索上下文和该数据集的参考答案，可回答为：根据有效记忆 S106_running_injury_M2, S106_running_injury_M5，可回答：六月十五日脚踝扭伤后，用户在七月十五日前暂停跑步。；恢复期间，用户每周三去做脚踝理疗。",
+          "statebudgetmem_retrieved": [
+            "S106_running_injury_M2",
+            "S106_running_injury_M5",
+            "S106_running_injury_M1"
+          ],
+          "template_answer": "模板回答：根据检索上下文和该数据集的参考答案，可回答为：根据有效记忆 S106_running_injury_M2, S106_running_injury_M5，可回答：六月十五日脚踝扭伤后，用户在七月十五日前暂停跑步。；恢复期间，用户每周三去做脚踝理疗。",
+          "text": "这周我还能按原计划跑五公里吗？"
+        },
+        {
+          "answer_memory_ids": [
+            "S106_running_injury_M1"
+          ],
+          "answerer_result": {
+            "answer_text": "模板回答：根据检索上下文和该数据集的参考答案，可回答为：根据有效记忆 S106_running_injury_M1，可回答：用户平时每周二和周四各跑五公里。",
+            "answerer_type": "template",
+            "generated_tokens": 59,
+            "latency_ms": 0.0004999992597731762,
+            "metadata": {
+              "cloud_api_calls": 0,
+              "generated_token_field": "generated_token_proxy",
+              "local_only": true,
+              "prompt_token_field": "prompt_token_proxy",
+              "tokenizer": "proxy"
+            },
+            "model_name": "deterministic_template_v1",
+            "prompt_tokens": 88,
+            "tokens_per_second": 118000174.69378905,
+            "used_memory_ids": [
+              "S106_running_injury_M1",
+              "S106_running_injury_M2"
+            ]
+          },
+          "answerer_type": "template",
+          "memorybank_retrieved": [
+            "S106_running_injury_M2",
+            "S106_running_injury_M1",
+            "S106_running_injury_M3"
+          ],
+          "memorybank_wrong_answer": "如果优先引用旧记忆或干扰记忆，回答可能与当前/历史视图不一致。",
+          "model_name": "deterministic_template_v1",
+          "query_id": "S106_running_injury_Q_HISTORICAL",
+          "query_type": "HISTORICAL",
+          "statebudgetmem_answer": "模板回答：根据检索上下文和该数据集的参考答案，可回答为：根据有效记忆 S106_running_injury_M1，可回答：用户平时每周二和周四各跑五公里。",
+          "statebudgetmem_retrieved": [
+            "S106_running_injury_M1",
+            "S106_running_injury_M2"
+          ],
+          "template_answer": "模板回答：根据检索上下文和该数据集的参考答案，可回答为：根据有效记忆 S106_running_injury_M1，可回答：用户平时每周二和周四各跑五公里。",
+          "text": "五月份我每周什么时候跑步？"
+        },
+        {
+          "answer_memory_ids": [
+            "S106_running_injury_M1",
+            "S106_running_injury_M2",
+            "S106_running_injury_M5"
+          ],
+          "answerer_result": {
+            "answer_text": "模板回答：根据检索上下文和该数据集的参考答案，可回答为：根据有效记忆 S106_running_injury_M1, S106_running_injury_M2, S106_running_injury_M5，可回答：用户平时每周二和周四各跑五公里。；六月十五日脚踝扭伤后，用户在七月十五日前暂停跑步。",
+            "answerer_type": "template",
+            "generated_tokens": 93,
+            "latency_ms": 0.0007000007826718502,
+            "metadata": {
+              "cloud_api_calls": 0,
+              "generated_token_field": "generated_token_proxy",
+              "local_only": true,
+              "prompt_token_field": "prompt_token_proxy",
+              "tokenizer": "proxy"
+            },
+            "model_name": "deterministic_template_v1",
+            "prompt_tokens": 110,
+            "tokens_per_second": 132856994.30938636,
+            "used_memory_ids": [
+              "S106_running_injury_M1",
+              "S106_running_injury_M2",
+              "S106_running_injury_M5"
+            ]
+          },
+          "answerer_type": "template",
+          "memorybank_retrieved": [
+            "S106_running_injury_M1",
+            "S106_running_injury_M2",
+            "S106_running_injury_M5"
+          ],
+          "memorybank_wrong_answer": "如果优先引用旧记忆或干扰记忆，回答可能与当前/历史视图不一致。",
+          "model_name": "deterministic_template_v1",
+          "query_id": "S106_running_injury_Q_CHANGE",
+          "query_type": "CHANGE",
+          "statebudgetmem_answer": "模板回答：根据检索上下文和该数据集的参考答案，可回答为：根据有效记忆 S106_running_injury_M1, S106_running_injury_M2, S106_running_injury_M5，可回答：用户平时每周二和周四各跑五公里。；六月十五日脚踝扭伤后，用户在七月十五日前暂停跑步。",
+          "statebudgetmem_retrieved": [
+            "S106_running_injury_M1",
+            "S106_running_injury_M2",
+            "S106_running_injury_M5"
+          ],
+          "template_answer": "模板回答：根据检索上下文和该数据集的参考答案，可回答为：根据有效记忆 S106_running_injury_M1, S106_running_injury_M2, S106_running_injury_M5，可回答：用户平时每周二和周四各跑五公里。；六月十五日脚踝扭伤后，用户在七月十五日前暂停跑步。",
+          "text": "我的跑步安排为什么被暂停了？"
+        }
+      ],
+      "resource_panel": {
+        "answerer_requested": "template",
+        "answerer_type": "template",
+        "cloud_api_calls": 0,
+        "embedding": "sentence-transformers/all-MiniLM-L6-v2",
+        "generated_tokens": 49,
+        "generation_latency_ms": 0.0024000000848900527,
+        "local_llm_endpoint": null,
+        "local_llm_unavailable_reason": null,
+        "local_only": true,
+        "memory_count": 2000,
+        "model_name": "deterministic_template_v1",
+        "prompt_tokens": 70,
+        "retrieval_latency_ms": 0.30215833333333336,
+        "storage": "local JSONL / metadata / embedding files",
+        "storage_bytes": 7394472.0,
+        "token_budget": 256,
+        "token_proxy_metric": "memory_record_token_cost / prompt token proxy",
+        "tokens_per_second": 20416665.94451173,
+        "vector_index": "local FAISS IndexFlatIP"
+      },
+      "source_scenario": "S106_running_injury",
+      "thesis": "固定跑步习惯因脚踝扭伤暂时失效。",
+      "why_statebudgetmem": "StateBudgetMem-style demo first applies query-type/view scoping, then retrieves from memories that are valid for that question view."
+    },
+    {
+      "case_id": "dataset_S108_caffeine_medication",
+      "conversation": [
+        {
+          "memory_id": "S108_caffeine_medication_M1",
+          "speaker": "user",
+          "text": "用户平时每天喝两杯咖啡。",
+          "time": "2026-01-20"
+        },
+        {
+          "memory_id": "S108_caffeine_medication_M2",
+          "speaker": "user",
+          "text": "服药期间，医生要求用户六月十日至七月十日不摄入咖啡因。",
+          "time": "2026-06-10"
+        },
+        {
+          "memory_id": "S108_caffeine_medication_M3",
+          "speaker": "user",
+          "text": "公司茶水间有无咖啡因咖啡。",
+          "time": "2026-06-11"
+        },
+        {
+          "memory_id": "S108_caffeine_medication_M4",
+          "speaker": "user",
+          "text": "用户平时也喜欢喝红茶。",
+          "time": "2026-02-14"
+        },
+        {
+          "memory_id": "S108_caffeine_medication_Q_CURRENT",
+          "speaker": "user",
+          "text": "我今天还能喝普通咖啡吗？",
+          "time": "2026-06-29"
+        }
+      ],
+      "failure_mode": "MemoryBank flat retrieval may mix old, current, and distractor records when they are semantically close.",
+      "label": "扩展场景：S108_caffeine_medication",
+      "label_en": "Formal dataset extension",
+      "label_note": "Extended case from data/controlled/temporal_challenge_v1.jsonl; showcase only, not a new formal result.",
+      "memories": [
+        {
+          "memory_id": "S108_caffeine_medication_M1",
+          "operation": "ADD",
+          "status_by_change_query": "CURRENT",
+          "status_by_current_query": "STALE",
+          "status_by_historical_query": "CURRENT",
+          "supersedes": [],
+          "temporarily_invalidates": [],
+          "text": "用户平时每天喝两杯咖啡。",
+          "time": "2026-01-20",
+          "token_cost": 8,
+          "valid_from": "2026-01-20",
+          "valid_to": null
+        },
+        {
+          "memory_id": "S108_caffeine_medication_M2",
+          "operation": "TEMP_INVALIDATE",
+          "status_by_change_query": "CURRENT",
+          "status_by_current_query": "CURRENT",
+          "status_by_historical_query": "STALE",
+          "supersedes": [],
+          "temporarily_invalidates": [
+            "S108_caffeine_medication_M1"
+          ],
+          "text": "服药期间，医生要求用户六月十日至七月十日不摄入咖啡因。",
+          "time": "2026-06-10",
+          "token_cost": 16,
+          "valid_from": "2026-06-10",
+          "valid_to": "2026-07-10"
+        },
+        {
+          "memory_id": "S108_caffeine_medication_M3",
+          "operation": "ADD",
+          "status_by_change_query": "HISTORICAL",
+          "status_by_current_query": "CURRENT",
+          "status_by_historical_query": "HISTORICAL",
+          "supersedes": [],
+          "temporarily_invalidates": [],
+          "text": "公司茶水间有无咖啡因咖啡。",
+          "time": "2026-06-11",
+          "token_cost": 8,
+          "valid_from": "2026-06-11",
+          "valid_to": null
+        },
+        {
+          "memory_id": "S108_caffeine_medication_M4",
+          "operation": "ADD",
+          "status_by_change_query": "HISTORICAL",
+          "status_by_current_query": "HISTORICAL",
+          "status_by_historical_query": "HISTORICAL",
+          "supersedes": [],
+          "temporarily_invalidates": [],
+          "text": "用户平时也喜欢喝红茶。",
+          "time": "2026-02-14",
+          "token_cost": 8,
+          "valid_from": "2026-02-14",
+          "valid_to": null
+        },
+        {
+          "memory_id": "S108_caffeine_medication_M5",
+          "operation": "ADD",
+          "status_by_change_query": "CURRENT",
+          "status_by_current_query": "HISTORICAL",
+          "status_by_historical_query": "HISTORICAL",
+          "supersedes": [],
+          "temporarily_invalidates": [],
+          "text": "这段时间的药需要在早餐后服用。",
+          "time": "2026-06-10",
+          "token_cost": 9,
+          "valid_from": "2026-06-10",
+          "valid_to": "2026-07-10"
+        },
+        {
+          "memory_id": "S108_caffeine_medication_M6",
+          "operation": "ADD",
+          "status_by_change_query": "HISTORICAL",
+          "status_by_current_query": "HISTORICAL",
+          "status_by_historical_query": "HISTORICAL",
+          "supersedes": [],
+          "temporarily_invalidates": [],
+          "text": "用户办公室的杯子是绿色的。",
+          "time": "2026-03-01",
+          "token_cost": 8,
+          "valid_from": "2026-03-01",
+          "valid_to": null
+        }
+      ],
+      "queries": [
+        {
+          "answer_memory_ids": [
+            "S108_caffeine_medication_M2",
+            "S108_caffeine_medication_M3"
+          ],
+          "answerer_result": {
+            "answer_text": "模板回答：根据检索上下文和该数据集的参考答案，可回答为：根据有效记忆 S108_caffeine_medication_M2, S108_caffeine_medication_M3，可回答：服药期间，医生要求用户六月十日至七月十日不摄入咖啡因。；公司茶水间有无咖啡因咖啡。",
+            "answerer_type": "template",
+            "generated_tokens": 88,
+            "latency_ms": 0.00039999940781854093,
+            "metadata": {
+              "cloud_api_calls": 0,
+              "generated_token_field": "generated_token_proxy",
+              "local_only": true,
+              "prompt_token_field": "prompt_token_proxy",
+              "tokenizer": "proxy"
+            },
+            "model_name": "deterministic_template_v1",
+            "prompt_tokens": 102,
+            "tokens_per_second": 220000325.70028466,
+            "used_memory_ids": [
+              "S108_caffeine_medication_M2",
+              "S108_caffeine_medication_M3",
+              "S108_caffeine_medication_M1"
+            ]
+          },
+          "answerer_type": "template",
+          "memorybank_retrieved": [
+            "S108_caffeine_medication_M1",
+            "S108_caffeine_medication_M2",
+            "S108_caffeine_medication_M3"
+          ],
+          "memorybank_wrong_answer": "如果优先引用旧记忆或干扰记忆，回答可能与当前/历史视图不一致。",
+          "model_name": "deterministic_template_v1",
+          "query_id": "S108_caffeine_medication_Q_CURRENT",
+          "query_type": "CURRENT",
+          "statebudgetmem_answer": "模板回答：根据检索上下文和该数据集的参考答案，可回答为：根据有效记忆 S108_caffeine_medication_M2, S108_caffeine_medication_M3，可回答：服药期间，医生要求用户六月十日至七月十日不摄入咖啡因。；公司茶水间有无咖啡因咖啡。",
+          "statebudgetmem_retrieved": [
+            "S108_caffeine_medication_M2",
+            "S108_caffeine_medication_M3",
+            "S108_caffeine_medication_M1"
+          ],
+          "template_answer": "模板回答：根据检索上下文和该数据集的参考答案，可回答为：根据有效记忆 S108_caffeine_medication_M2, S108_caffeine_medication_M3，可回答：服药期间，医生要求用户六月十日至七月十日不摄入咖啡因。；公司茶水间有无咖啡因咖啡。",
+          "text": "我今天还能喝普通咖啡吗？"
+        },
+        {
+          "answer_memory_ids": [
+            "S108_caffeine_medication_M1"
+          ],
+          "answerer_result": {
+            "answer_text": "模板回答：根据检索上下文和该数据集的参考答案，可回答为：根据有效记忆 S108_caffeine_medication_M1，可回答：用户平时每天喝两杯咖啡。",
+            "answerer_type": "template",
+            "generated_tokens": 55,
+            "latency_ms": 0.00030000046535860747,
+            "metadata": {
+              "cloud_api_calls": 0,
+              "generated_token_field": "generated_token_proxy",
+              "local_only": true,
+              "prompt_token_field": "prompt_token_proxy",
+              "tokenizer": "proxy"
+            },
+            "model_name": "deterministic_template_v1",
+            "prompt_tokens": 87,
+            "tokens_per_second": 183333048.9479588,
+            "used_memory_ids": [
+              "S108_caffeine_medication_M1",
+              "S108_caffeine_medication_M2"
+            ]
+          },
+          "answerer_type": "template",
+          "memorybank_retrieved": [
+            "S108_caffeine_medication_M2",
+            "S108_caffeine_medication_M1",
+            "S108_caffeine_medication_M3"
+          ],
+          "memorybank_wrong_answer": "如果优先引用旧记忆或干扰记忆，回答可能与当前/历史视图不一致。",
+          "model_name": "deterministic_template_v1",
+          "query_id": "S108_caffeine_medication_Q_HISTORICAL",
+          "query_type": "HISTORICAL",
+          "statebudgetmem_answer": "模板回答：根据检索上下文和该数据集的参考答案，可回答为：根据有效记忆 S108_caffeine_medication_M1，可回答：用户平时每天喝两杯咖啡。",
+          "statebudgetmem_retrieved": [
+            "S108_caffeine_medication_M1",
+            "S108_caffeine_medication_M2"
+          ],
+          "template_answer": "模板回答：根据检索上下文和该数据集的参考答案，可回答为：根据有效记忆 S108_caffeine_medication_M1，可回答：用户平时每天喝两杯咖啡。",
+          "text": "五月份我通常每天喝多少咖啡？"
+        },
+        {
+          "answer_memory_ids": [
+            "S108_caffeine_medication_M1",
+            "S108_caffeine_medication_M2",
+            "S108_caffeine_medication_M5"
+          ],
+          "answerer_result": {
+            "answer_text": "模板回答：根据检索上下文和该数据集的参考答案，可回答为：根据有效记忆 S108_caffeine_medication_M1, S108_caffeine_medication_M2, S108_caffeine_medication_M5，可回答：用户平时每天喝两杯咖啡。；服药期间，医生要求用户六月十日至七月十日不摄入咖啡因。",
+            "answerer_type": "template",
+            "generated_tokens": 91,
+            "latency_ms": 0.00019999970390927047,
+            "metadata": {
+              "cloud_api_calls": 0,
+              "generated_token_field": "generated_token_proxy",
+              "local_only": true,
+              "prompt_token_field": "prompt_token_proxy",
+              "tokenizer": "proxy"
+            },
+            "model_name": "deterministic_template_v1",
+            "prompt_tokens": 107,
+            "tokens_per_second": 455000673.6074069,
+            "used_memory_ids": [
+              "S108_caffeine_medication_M1",
+              "S108_caffeine_medication_M2",
+              "S108_caffeine_medication_M5"
+            ]
+          },
+          "answerer_type": "template",
+          "memorybank_retrieved": [
+            "S108_caffeine_medication_M1",
+            "S108_caffeine_medication_M2",
+            "S108_caffeine_medication_M5"
+          ],
+          "memorybank_wrong_answer": "如果优先引用旧记忆或干扰记忆，回答可能与当前/历史视图不一致。",
+          "model_name": "deterministic_template_v1",
+          "query_id": "S108_caffeine_medication_Q_CHANGE",
+          "query_type": "CHANGE",
+          "statebudgetmem_answer": "模板回答：根据检索上下文和该数据集的参考答案，可回答为：根据有效记忆 S108_caffeine_medication_M1, S108_caffeine_medication_M2, S108_caffeine_medication_M5，可回答：用户平时每天喝两杯咖啡。；服药期间，医生要求用户六月十日至七月十日不摄入咖啡因。",
+          "statebudgetmem_retrieved": [
+            "S108_caffeine_medication_M1",
+            "S108_caffeine_medication_M2",
+            "S108_caffeine_medication_M5"
+          ],
+          "template_answer": "模板回答：根据检索上下文和该数据集的参考答案，可回答为：根据有效记忆 S108_caffeine_medication_M1, S108_caffeine_medication_M2, S108_caffeine_medication_M5，可回答：用户平时每天喝两杯咖啡。；服药期间，医生要求用户六月十日至七月十日不摄入咖啡因。",
+          "text": "我的咖啡习惯为什么暂时停止了？"
+        }
+      ],
+      "resource_panel": {
+        "answerer_requested": "template",
+        "answerer_type": "template",
+        "cloud_api_calls": 0,
+        "embedding": "sentence-transformers/all-MiniLM-L6-v2",
+        "generated_tokens": 49,
+        "generation_latency_ms": 0.0024000000848900527,
+        "local_llm_endpoint": null,
+        "local_llm_unavailable_reason": null,
+        "local_only": true,
+        "memory_count": 2000,
+        "model_name": "deterministic_template_v1",
+        "prompt_tokens": 70,
+        "retrieval_latency_ms": 0.30215833333333336,
+        "storage": "local JSONL / metadata / embedding files",
+        "storage_bytes": 7394472.0,
+        "token_budget": 256,
+        "token_proxy_metric": "memory_record_token_cost / prompt token proxy",
+        "tokens_per_second": 20416665.94451173,
+        "vector_index": "local FAISS IndexFlatIP"
+      },
+      "source_scenario": "S108_caffeine_medication",
+      "thesis": "稳定咖啡习惯被药物治疗期间的禁咖啡因要求暂时覆盖。",
+      "why_statebudgetmem": "StateBudgetMem-style demo first applies query-type/view scoping, then retrieves from memories that are valid for that question view."
+    },
+    {
+      "case_id": "dataset_S111_business_trip_return",
+      "conversation": [
+        {
+          "memory_id": "S111_business_trip_return_M1",
+          "speaker": "user",
+          "text": "用户平时在北京办公室工作。",
+          "time": "2026-02-01"
+        },
+        {
+          "memory_id": "S111_business_trip_return_M2",
+          "speaker": "user",
+          "text": "六月十日至六月二十日，用户在上海出差办公。",
+          "time": "2026-06-10"
+        },
+        {
+          "memory_id": "S111_business_trip_return_M3",
+          "speaker": "user",
+          "text": "六月二十一日出差结束后，用户已返回北京办公室。",
+          "time": "2026-06-21"
+        },
+        {
+          "memory_id": "S111_business_trip_return_M4",
+          "speaker": "user",
+          "text": "用户的常住地一直在北京。",
+          "time": "2026-01-12"
+        },
+        {
+          "memory_id": "S111_business_trip_return_Q_CURRENT",
+          "speaker": "user",
+          "text": "我现在在哪个城市办公？",
+          "time": "2026-06-29"
+        }
+      ],
+      "failure_mode": "MemoryBank flat retrieval may mix old, current, and distractor records when they are semantically close.",
+      "label": "扩展场景：S111_business_trip_return",
+      "label_en": "Formal dataset extension",
+      "label_note": "Extended case from data/controlled/temporal_challenge_v1.jsonl; showcase only, not a new formal result.",
+      "memories": [
+        {
+          "memory_id": "S111_business_trip_return_M1",
+          "operation": "ADD/HISTORICAL",
+          "status_by_change_query": "CURRENT",
+          "status_by_current_query": "STALE",
+          "status_by_historical_query": "STALE",
+          "supersedes": [],
+          "temporarily_invalidates": [],
+          "text": "用户平时在北京办公室工作。",
+          "time": "2026-02-01",
+          "token_cost": 8,
+          "valid_from": "2026-02-01",
+          "valid_to": "2026-06-09"
+        },
+        {
+          "memory_id": "S111_business_trip_return_M2",
+          "operation": "TEMP_INVALIDATE",
+          "status_by_change_query": "CURRENT",
+          "status_by_current_query": "STALE",
+          "status_by_historical_query": "CURRENT",
+          "supersedes": [],
+          "temporarily_invalidates": [
+            "S111_business_trip_return_M1"
+          ],
+          "text": "六月十日至六月二十日，用户在上海出差办公。",
+          "time": "2026-06-10",
+          "token_cost": 12,
+          "valid_from": "2026-06-10",
+          "valid_to": "2026-06-20"
+        },
+        {
+          "memory_id": "S111_business_trip_return_M3",
+          "operation": "SUPERSEDE",
+          "status_by_change_query": "CURRENT",
+          "status_by_current_query": "CURRENT",
+          "status_by_historical_query": "STALE",
+          "supersedes": [
+            "S111_business_trip_return_M2"
+          ],
+          "temporarily_invalidates": [],
+          "text": "六月二十一日出差结束后，用户已返回北京办公室。",
+          "time": "2026-06-21",
+          "token_cost": 13,
+          "valid_from": "2026-06-21",
+          "valid_to": null
+        },
+        {
+          "memory_id": "S111_business_trip_return_M4",
+          "operation": "ADD",
+          "status_by_change_query": "HISTORICAL",
+          "status_by_current_query": "HISTORICAL",
+          "status_by_historical_query": "HISTORICAL",
+          "supersedes": [],
+          "temporarily_invalidates": [],
+          "text": "用户的常住地一直在北京。",
+          "time": "2026-01-12",
+          "token_cost": 8,
+          "valid_from": "2026-01-12",
+          "valid_to": null
+        },
+        {
+          "memory_id": "S111_business_trip_return_M5",
+          "operation": "ADD/HISTORICAL",
+          "status_by_change_query": "CURRENT",
+          "status_by_current_query": "HISTORICAL",
+          "status_by_historical_query": "CURRENT",
+          "supersedes": [],
+          "temporarily_invalidates": [],
+          "text": "上海出差是为了拜访甲方客户。",
+          "time": "2026-06-10",
+          "token_cost": 8,
+          "valid_from": "2026-06-10",
+          "valid_to": "2026-06-20"
+        },
+        {
+          "memory_id": "S111_business_trip_return_M6",
+          "operation": "ADD",
+          "status_by_change_query": "HISTORICAL",
+          "status_by_current_query": "HISTORICAL",
+          "status_by_historical_query": "HISTORICAL",
+          "supersedes": [],
+          "temporarily_invalidates": [],
+          "text": "用户通常周五可以远程办公。",
+          "time": "2026-03-01",
+          "token_cost": 8,
+          "valid_from": "2026-03-01",
+          "valid_to": null
+        }
+      ],
+      "queries": [
+        {
+          "answer_memory_ids": [
+            "S111_business_trip_return_M3"
+          ],
+          "answerer_result": {
+            "answer_text": "模板回答：根据检索上下文和该数据集的参考答案，可回答为：根据有效记忆 S111_business_trip_return_M3，可回答：六月二十一日出差结束后，用户已返回北京办公室。",
+            "answerer_type": "template",
+            "generated_tokens": 67,
+            "latency_ms": 0.00019999970390927047,
+            "metadata": {
+              "cloud_api_calls": 0,
+              "generated_token_field": "generated_token_proxy",
+              "local_only": true,
+              "prompt_token_field": "prompt_token_proxy",
+              "tokenizer": "proxy"
+            },
+            "model_name": "deterministic_template_v1",
+            "prompt_tokens": 109,
+            "tokens_per_second": 335000495.9527062,
+            "used_memory_ids": [
+              "S111_business_trip_return_M3",
+              "S111_business_trip_return_M1",
+              "S111_business_trip_return_M2"
+            ]
+          },
+          "answerer_type": "template",
+          "memorybank_retrieved": [
+            "S111_business_trip_return_M1",
+            "S111_business_trip_return_M2",
+            "S111_business_trip_return_M3"
+          ],
+          "memorybank_wrong_answer": "如果优先引用旧记忆或干扰记忆，回答可能与当前/历史视图不一致。",
+          "model_name": "deterministic_template_v1",
+          "query_id": "S111_business_trip_return_Q_CURRENT",
+          "query_type": "CURRENT",
+          "statebudgetmem_answer": "模板回答：根据检索上下文和该数据集的参考答案，可回答为：根据有效记忆 S111_business_trip_return_M3，可回答：六月二十一日出差结束后，用户已返回北京办公室。",
+          "statebudgetmem_retrieved": [
+            "S111_business_trip_return_M3",
+            "S111_business_trip_return_M1",
+            "S111_business_trip_return_M2"
+          ],
+          "template_answer": "模板回答：根据检索上下文和该数据集的参考答案，可回答为：根据有效记忆 S111_business_trip_return_M3，可回答：六月二十一日出差结束后，用户已返回北京办公室。",
+          "text": "我现在在哪个城市办公？"
+        },
+        {
+          "answer_memory_ids": [
+            "S111_business_trip_return_M2",
+            "S111_business_trip_return_M5"
+          ],
+          "answerer_result": {
+            "answer_text": "模板回答：根据检索上下文和该数据集的参考答案，可回答为：根据有效记忆 S111_business_trip_return_M2, S111_business_trip_return_M5，可回答：六月十日至六月二十日，用户在上海出差办公。；上海出差是为了拜访甲方客户。",
+            "answerer_type": "template",
+            "generated_tokens": 85,
+            "latency_ms": 0.0005000001692678779,
+            "metadata": {
+              "cloud_api_calls": 0,
+              "generated_token_field": "generated_token_proxy",
+              "local_only": true,
+              "prompt_token_field": "prompt_token_proxy",
+              "tokenizer": "proxy"
+            },
+            "model_name": "deterministic_template_v1",
+            "prompt_tokens": 103,
+            "tokens_per_second": 169999942.448941,
+            "used_memory_ids": [
+              "S111_business_trip_return_M2",
+              "S111_business_trip_return_M5",
+              "S111_business_trip_return_M1"
+            ]
+          },
+          "answerer_type": "template",
+          "memorybank_retrieved": [
+            "S111_business_trip_return_M1",
+            "S111_business_trip_return_M3",
+            "S111_business_trip_return_M2"
+          ],
+          "memorybank_wrong_answer": "如果优先引用旧记忆或干扰记忆，回答可能与当前/历史视图不一致。",
+          "model_name": "deterministic_template_v1",
+          "query_id": "S111_business_trip_return_Q_HISTORICAL",
+          "query_type": "HISTORICAL",
+          "statebudgetmem_answer": "模板回答：根据检索上下文和该数据集的参考答案，可回答为：根据有效记忆 S111_business_trip_return_M2, S111_business_trip_return_M5，可回答：六月十日至六月二十日，用户在上海出差办公。；上海出差是为了拜访甲方客户。",
+          "statebudgetmem_retrieved": [
+            "S111_business_trip_return_M2",
+            "S111_business_trip_return_M5",
+            "S111_business_trip_return_M1"
+          ],
+          "template_answer": "模板回答：根据检索上下文和该数据集的参考答案，可回答为：根据有效记忆 S111_business_trip_return_M2, S111_business_trip_return_M5，可回答：六月十日至六月二十日，用户在上海出差办公。；上海出差是为了拜访甲方客户。",
+          "text": "六月十五日我在哪个城市办公？"
+        },
+        {
+          "answer_memory_ids": [
+            "S111_business_trip_return_M1",
+            "S111_business_trip_return_M2",
+            "S111_business_trip_return_M3"
+          ],
+          "answerer_result": {
+            "answer_text": "模板回答：根据检索上下文和该数据集的参考答案，可回答为：根据有效记忆 S111_business_trip_return_M1, S111_business_trip_return_M2, S111_business_trip_return_M3，可回答：用户平时在北京办公室工作。；六月十日至六月二十日，用户在上海出差办公。",
+            "answerer_type": "template",
+            "generated_tokens": 89,
+            "latency_ms": 0.004499999704421498,
+            "metadata": {
+              "cloud_api_calls": 0,
+              "generated_token_field": "generated_token_proxy",
+              "local_only": true,
+              "prompt_token_field": "prompt_token_proxy",
+              "tokenizer": "proxy"
+            },
+            "model_name": "deterministic_template_v1",
+            "prompt_tokens": 115,
+            "tokens_per_second": 19777779.076863624,
+            "used_memory_ids": [
+              "S111_business_trip_return_M1",
+              "S111_business_trip_return_M2",
+              "S111_business_trip_return_M3"
+            ]
+          },
+          "answerer_type": "template",
+          "memorybank_retrieved": [
+            "S111_business_trip_return_M1",
+            "S111_business_trip_return_M2",
+            "S111_business_trip_return_M3"
+          ],
+          "memorybank_wrong_answer": "如果优先引用旧记忆或干扰记忆，回答可能与当前/历史视图不一致。",
+          "model_name": "deterministic_template_v1",
+          "query_id": "S111_business_trip_return_Q_CHANGE",
+          "query_type": "CHANGE",
+          "statebudgetmem_answer": "模板回答：根据检索上下文和该数据集的参考答案，可回答为：根据有效记忆 S111_business_trip_return_M1, S111_business_trip_return_M2, S111_business_trip_return_M3，可回答：用户平时在北京办公室工作。；六月十日至六月二十日，用户在上海出差办公。",
+          "statebudgetmem_retrieved": [
+            "S111_business_trip_return_M1",
+            "S111_business_trip_return_M2",
+            "S111_business_trip_return_M3"
+          ],
+          "template_answer": "模板回答：根据检索上下文和该数据集的参考答案，可回答为：根据有效记忆 S111_business_trip_return_M1, S111_business_trip_return_M2, S111_business_trip_return_M3，可回答：用户平时在北京办公室工作。；六月十日至六月二十日，用户在上海出差办公。",
+          "text": "这次出差前后我的办公地点如何变化？"
+        }
+      ],
+      "resource_panel": {
+        "answerer_requested": "template",
+        "answerer_type": "template",
+        "cloud_api_calls": 0,
+        "embedding": "sentence-transformers/all-MiniLM-L6-v2",
+        "generated_tokens": 49,
+        "generation_latency_ms": 0.0024000000848900527,
+        "local_llm_endpoint": null,
+        "local_llm_unavailable_reason": null,
+        "local_only": true,
+        "memory_count": 2000,
+        "model_name": "deterministic_template_v1",
+        "prompt_tokens": 70,
+        "retrieval_latency_ms": 0.30215833333333336,
+        "storage": "local JSONL / metadata / embedding files",
+        "storage_bytes": 7394472.0,
+        "token_budget": 256,
+        "token_proxy_metric": "memory_record_token_cost / prompt token proxy",
+        "tokens_per_second": 20416665.94451173,
+        "vector_index": "local FAISS IndexFlatIP"
+      },
+      "source_scenario": "S111_business_trip_return",
+      "thesis": "外地出差结束后，工作地点恢复为常驻办公室。",
+      "why_statebudgetmem": "StateBudgetMem-style demo first applies query-type/view scoping, then retrieves from memories that are valid for that question view."
+    },
+    {
+      "case_id": "dataset_S120_reading_format_distractors",
+      "conversation": [
+        {
+          "memory_id": "S120_reading_format_distractors_M1",
+          "speaker": "user",
+          "text": "一月至四月，用户更喜欢用电子书阅读。",
+          "time": "2026-01-02"
+        },
+        {
+          "memory_id": "S120_reading_format_distractors_M2",
+          "speaker": "user",
+          "text": "五月起，因为眼睛容易疲劳，用户改为更喜欢纸质书。",
+          "time": "2026-05-01"
+        },
+        {
+          "memory_id": "S120_reading_format_distractors_M3",
+          "speaker": "user",
+          "text": "用户仍然拥有一台 Kindle 阅读器。",
+          "time": "2025-12-01"
+        },
+        {
+          "memory_id": "S120_reading_format_distractors_M4",
+          "speaker": "user",
+          "text": "用户订阅的行业杂志仍然是数字版。",
+          "time": "2026-02-01"
+        },
+        {
+          "memory_id": "S120_reading_format_distractors_Q_CURRENT",
+          "speaker": "user",
+          "text": "我现在更喜欢读电子书还是纸质书？",
+          "time": "2026-06-29"
+        }
+      ],
+      "failure_mode": "MemoryBank flat retrieval may mix old, current, and distractor records when they are semantically close.",
+      "label": "扩展场景：S120_reading_format_distractors",
+      "label_en": "Formal dataset extension",
+      "label_note": "Extended case from data/controlled/temporal_challenge_v1.jsonl; showcase only, not a new formal result.",
+      "memories": [
+        {
+          "memory_id": "S120_reading_format_distractors_M1",
+          "operation": "ADD/HISTORICAL",
+          "status_by_change_query": "CURRENT",
+          "status_by_current_query": "STALE",
+          "status_by_historical_query": "CURRENT",
+          "supersedes": [],
+          "temporarily_invalidates": [],
+          "text": "一月至四月，用户更喜欢用电子书阅读。",
+          "time": "2026-01-02",
+          "token_cost": 10,
+          "valid_from": "2026-01-02",
+          "valid_to": "2026-04-30"
+        },
+        {
+          "memory_id": "S120_reading_format_distractors_M2",
+          "operation": "SUPERSEDE",
+          "status_by_change_query": "CURRENT",
+          "status_by_current_query": "CURRENT",
+          "status_by_historical_query": "STALE",
+          "supersedes": [
+            "S120_reading_format_distractors_M1"
+          ],
+          "temporarily_invalidates": [],
+          "text": "五月起，因为眼睛容易疲劳，用户改为更喜欢纸质书。",
+          "time": "2026-05-01",
+          "token_cost": 14,
+          "valid_from": "2026-05-01",
+          "valid_to": null
+        },
+        {
+          "memory_id": "S120_reading_format_distractors_M3",
+          "operation": "ADD",
+          "status_by_change_query": "HISTORICAL",
+          "status_by_current_query": "HISTORICAL",
+          "status_by_historical_query": "HISTORICAL",
+          "supersedes": [],
+          "temporarily_invalidates": [],
+          "text": "用户仍然拥有一台 Kindle 阅读器。",
+          "time": "2025-12-01",
+          "token_cost": 12,
+          "valid_from": "2025-12-01",
+          "valid_to": null
+        },
+        {
+          "memory_id": "S120_reading_format_distractors_M4",
+          "operation": "ADD",
+          "status_by_change_query": "HISTORICAL",
+          "status_by_current_query": "HISTORICAL",
+          "status_by_historical_query": "HISTORICAL",
+          "supersedes": [],
+          "temporarily_invalidates": [],
+          "text": "用户订阅的行业杂志仍然是数字版。",
+          "time": "2026-02-01",
+          "token_cost": 9,
+          "valid_from": "2026-02-01",
+          "valid_to": null
+        },
+        {
+          "memory_id": "S120_reading_format_distractors_M5",
+          "operation": "ADD",
+          "status_by_change_query": "HISTORICAL",
+          "status_by_current_query": "CURRENT",
+          "status_by_historical_query": "HISTORICAL",
+          "supersedes": [],
+          "temporarily_invalidates": [],
+          "text": "用户的市图书馆借阅证目前有效。",
+          "time": "2026-05-03",
+          "token_cost": 9,
+          "valid_from": "2026-05-03",
+          "valid_to": null
+        },
+        {
+          "memory_id": "S120_reading_format_distractors_M6",
+          "operation": "ADD",
+          "status_by_change_query": "HISTORICAL",
+          "status_by_current_query": "HISTORICAL",
+          "status_by_historical_query": "HISTORICAL",
+          "supersedes": [],
+          "temporarily_invalidates": [],
+          "text": "通勤路上用户偶尔听有声书。",
+          "time": "2026-03-15",
+          "token_cost": 8,
+          "valid_from": "2026-03-15",
+          "valid_to": null
+        }
+      ],
+      "queries": [
+        {
+          "answer_memory_ids": [
+            "S120_reading_format_distractors_M2",
+            "S120_reading_format_distractors_M5"
+          ],
+          "answerer_result": {
+            "answer_text": "模板回答：根据检索上下文和该数据集的参考答案，可回答为：根据有效记忆 S120_reading_format_distractors_M2, S120_reading_format_distractors_M5，可回答：五月起，因为眼睛容易疲劳，用户改为更喜欢纸质书。；用户的市图书馆借阅证目前有效。",
+            "answerer_type": "template",
+            "generated_tokens": 89,
+            "latency_ms": 0.0004000003173132427,
+            "metadata": {
+              "cloud_api_calls": 0,
+              "generated_token_field": "generated_token_proxy",
+              "local_only": true,
+              "prompt_token_field": "prompt_token_proxy",
+              "tokenizer": "proxy"
+            },
+            "model_name": "deterministic_template_v1",
+            "prompt_tokens": 114,
+            "tokens_per_second": 222499823.49464875,
+            "used_memory_ids": [
+              "S120_reading_format_distractors_M2",
+              "S120_reading_format_distractors_M5",
+              "S120_reading_format_distractors_M1"
+            ]
+          },
+          "answerer_type": "template",
+          "memorybank_retrieved": [
+            "S120_reading_format_distractors_M1",
+            "S120_reading_format_distractors_M2",
+            "S120_reading_format_distractors_M5"
+          ],
+          "memorybank_wrong_answer": "如果优先引用旧记忆或干扰记忆，回答可能与当前/历史视图不一致。",
+          "model_name": "deterministic_template_v1",
+          "query_id": "S120_reading_format_distractors_Q_CURRENT",
+          "query_type": "CURRENT",
+          "statebudgetmem_answer": "模板回答：根据检索上下文和该数据集的参考答案，可回答为：根据有效记忆 S120_reading_format_distractors_M2, S120_reading_format_distractors_M5，可回答：五月起，因为眼睛容易疲劳，用户改为更喜欢纸质书。；用户的市图书馆借阅证目前有效。",
+          "statebudgetmem_retrieved": [
+            "S120_reading_format_distractors_M2",
+            "S120_reading_format_distractors_M5",
+            "S120_reading_format_distractors_M1"
+          ],
+          "template_answer": "模板回答：根据检索上下文和该数据集的参考答案，可回答为：根据有效记忆 S120_reading_format_distractors_M2, S120_reading_format_distractors_M5，可回答：五月起，因为眼睛容易疲劳，用户改为更喜欢纸质书。；用户的市图书馆借阅证目前有效。",
+          "text": "我现在更喜欢读电子书还是纸质书？"
+        },
+        {
+          "answer_memory_ids": [
+            "S120_reading_format_distractors_M1"
+          ],
+          "answerer_result": {
+            "answer_text": "模板回答：根据检索上下文和该数据集的参考答案，可回答为：根据有效记忆 S120_reading_format_distractors_M1，可回答：一月至四月，用户更喜欢用电子书阅读。",
+            "answerer_type": "template",
+            "generated_tokens": 62,
+            "latency_ms": 0.001100000190490391,
+            "metadata": {
+              "cloud_api_calls": 0,
+              "generated_token_field": "generated_token_proxy",
+              "local_only": true,
+              "prompt_token_field": "prompt_token_proxy",
+              "tokenizer": "proxy"
+            },
+            "model_name": "deterministic_template_v1",
+            "prompt_tokens": 110,
+            "tokens_per_second": 56363626.60297339,
+            "used_memory_ids": [
+              "S120_reading_format_distractors_M1",
+              "S120_reading_format_distractors_M2",
+              "S120_reading_format_distractors_M3"
+            ]
+          },
+          "answerer_type": "template",
+          "memorybank_retrieved": [
+            "S120_reading_format_distractors_M2",
+            "S120_reading_format_distractors_M1",
+            "S120_reading_format_distractors_M3"
+          ],
+          "memorybank_wrong_answer": "如果优先引用旧记忆或干扰记忆，回答可能与当前/历史视图不一致。",
+          "model_name": "deterministic_template_v1",
+          "query_id": "S120_reading_format_distractors_Q_HISTORICAL",
+          "query_type": "HISTORICAL",
+          "statebudgetmem_answer": "模板回答：根据检索上下文和该数据集的参考答案，可回答为：根据有效记忆 S120_reading_format_distractors_M1，可回答：一月至四月，用户更喜欢用电子书阅读。",
+          "statebudgetmem_retrieved": [
+            "S120_reading_format_distractors_M1",
+            "S120_reading_format_distractors_M2",
+            "S120_reading_format_distractors_M3"
+          ],
+          "template_answer": "模板回答：根据检索上下文和该数据集的参考答案，可回答为：根据有效记忆 S120_reading_format_distractors_M1，可回答：一月至四月，用户更喜欢用电子书阅读。",
+          "text": "三月份我更偏好哪种书籍形式？"
+        },
+        {
+          "answer_memory_ids": [
+            "S120_reading_format_distractors_M1",
+            "S120_reading_format_distractors_M2"
+          ],
+          "answerer_result": {
+            "answer_text": "模板回答：根据检索上下文和该数据集的参考答案，可回答为：根据有效记忆 S120_reading_format_distractors_M1, S120_reading_format_distractors_M2，可回答：一月至四月，用户更喜欢用电子书阅读。；五月起，因为眼睛容易疲劳，用户改为更喜欢纸质书。",
+            "answerer_type": "template",
+            "generated_tokens": 92,
+            "latency_ms": 0.0006000000212225132,
+            "metadata": {
+              "cloud_api_calls": 0,
+              "generated_token_field": "generated_token_proxy",
+              "local_only": true,
+              "prompt_token_field": "prompt_token_proxy",
+              "tokenizer": "proxy"
+            },
+            "model_name": "deterministic_template_v1",
+            "prompt_tokens": 93,
+            "tokens_per_second": 153333327.90980238,
+            "used_memory_ids": [
+              "S120_reading_format_distractors_M1",
+              "S120_reading_format_distractors_M2"
+            ]
+          },
+          "answerer_type": "template",
+          "memorybank_retrieved": [
+            "S120_reading_format_distractors_M1",
+            "S120_reading_format_distractors_M2",
+            "S120_reading_format_distractors_M3"
+          ],
+          "memorybank_wrong_answer": "如果优先引用旧记忆或干扰记忆，回答可能与当前/历史视图不一致。",
+          "model_name": "deterministic_template_v1",
+          "query_id": "S120_reading_format_distractors_Q_CHANGE",
+          "query_type": "CHANGE",
+          "statebudgetmem_answer": "模板回答：根据检索上下文和该数据集的参考答案，可回答为：根据有效记忆 S120_reading_format_distractors_M1, S120_reading_format_distractors_M2，可回答：一月至四月，用户更喜欢用电子书阅读。；五月起，因为眼睛容易疲劳，用户改为更喜欢纸质书。",
+          "statebudgetmem_retrieved": [
+            "S120_reading_format_distractors_M1",
+            "S120_reading_format_distractors_M2"
+          ],
+          "template_answer": "模板回答：根据检索上下文和该数据集的参考答案，可回答为：根据有效记忆 S120_reading_format_distractors_M1, S120_reading_format_distractors_M2，可回答：一月至四月，用户更喜欢用电子书阅读。；五月起，因为眼睛容易疲劳，用户改为更喜欢纸质书。",
+          "text": "我的阅读载体偏好为什么改变了？"
+        }
+      ],
+      "resource_panel": {
+        "answerer_requested": "template",
+        "answerer_type": "template",
+        "cloud_api_calls": 0,
+        "embedding": "sentence-transformers/all-MiniLM-L6-v2",
+        "generated_tokens": 49,
+        "generation_latency_ms": 0.0024000000848900527,
+        "local_llm_endpoint": null,
+        "local_llm_unavailable_reason": null,
+        "local_only": true,
+        "memory_count": 2000,
+        "model_name": "deterministic_template_v1",
+        "prompt_tokens": 70,
+        "retrieval_latency_ms": 0.30215833333333336,
+        "storage": "local JSONL / metadata / embedding files",
+        "storage_bytes": 7394472.0,
+        "token_budget": 256,
+        "token_proxy_metric": "memory_record_token_cost / prompt token proxy",
+        "tokens_per_second": 20416665.94451173,
+        "vector_index": "local FAISS IndexFlatIP"
+      },
+      "source_scenario": "S120_reading_format_distractors",
+      "thesis": "阅读偏好从电子书改为纸质书，保留 Kindle、数字杂志等强干扰。",
+      "why_statebudgetmem": "StateBudgetMem-style demo first applies query-type/view scoping, then retrieves from memories that are valid for that question view."
+    },
+    {
+      "case_id": "dataset_S125_weather_commute",
+      "conversation": [
+        {
+          "memory_id": "S125_weather_commute_M1",
+          "speaker": "user",
+          "text": "一月至三月，用户工作日不分天气都乘公交上班。",
+          "time": "2026-01-02"
+        },
+        {
+          "memory_id": "S125_weather_commute_M2",
+          "speaker": "user",
+          "text": "四月起，工作日天气干燥时用户骑车上班。",
+          "time": "2026-04-01"
+        },
+        {
+          "memory_id": "S125_weather_commute_M3",
+          "speaker": "user",
+          "text": "四月起，工作日下雨时用户改乘地铁上班。",
+          "time": "2026-04-01"
+        },
+        {
+          "memory_id": "S125_weather_commute_M4",
+          "speaker": "user",
+          "text": "六月二十九日早晨有大雨。",
+          "time": "2026-06-29"
+        },
+        {
+          "memory_id": "S125_weather_commute_Q_CURRENT",
+          "speaker": "user",
+          "text": "今天下大雨，我应该怎么去上班？",
+          "time": "2026-06-29"
+        }
+      ],
+      "failure_mode": "MemoryBank flat retrieval may mix old, current, and distractor records when they are semantically close.",
+      "label": "扩展场景：S125_weather_commute",
+      "label_en": "Formal dataset extension",
+      "label_note": "Extended case from data/controlled/temporal_challenge_v1.jsonl; showcase only, not a new formal result.",
+      "memories": [
+        {
+          "memory_id": "S125_weather_commute_M1",
+          "operation": "ADD/HISTORICAL",
+          "status_by_change_query": "CURRENT",
+          "status_by_current_query": "STALE",
+          "status_by_historical_query": "CURRENT",
+          "supersedes": [],
+          "temporarily_invalidates": [],
+          "text": "一月至三月，用户工作日不分天气都乘公交上班。",
+          "time": "2026-01-02",
+          "token_cost": 13,
+          "valid_from": "2026-01-02",
+          "valid_to": "2026-03-31"
+        },
+        {
+          "memory_id": "S125_weather_commute_M2",
+          "operation": "ADD",
+          "status_by_change_query": "CURRENT",
+          "status_by_current_query": "STALE",
+          "status_by_historical_query": "STALE",
+          "supersedes": [],
+          "temporarily_invalidates": [],
+          "text": "四月起，工作日天气干燥时用户骑车上班。",
+          "time": "2026-04-01",
+          "token_cost": 11,
+          "valid_from": "2026-04-01",
+          "valid_to": null
+        },
+        {
+          "memory_id": "S125_weather_commute_M3",
+          "operation": "ADD",
+          "status_by_change_query": "CURRENT",
+          "status_by_current_query": "CURRENT",
+          "status_by_historical_query": "STALE",
+          "supersedes": [],
+          "temporarily_invalidates": [],
+          "text": "四月起，工作日下雨时用户改乘地铁上班。",
+          "time": "2026-04-01",
+          "token_cost": 11,
+          "valid_from": "2026-04-01",
+          "valid_to": null
+        },
+        {
+          "memory_id": "S125_weather_commute_M4",
+          "operation": "ADD",
+          "status_by_change_query": "HISTORICAL",
+          "status_by_current_query": "CURRENT",
+          "status_by_historical_query": "HISTORICAL",
+          "supersedes": [],
+          "temporarily_invalidates": [],
+          "text": "六月二十九日早晨有大雨。",
+          "time": "2026-06-29",
+          "token_cost": 8,
+          "valid_from": "2026-06-29",
+          "valid_to": "2026-06-29"
+        },
+        {
+          "memory_id": "S125_weather_commute_M5",
+          "operation": "ADD",
+          "status_by_change_query": "HISTORICAL",
+          "status_by_current_query": "HISTORICAL",
+          "status_by_historical_query": "HISTORICAL",
+          "supersedes": [],
+          "temporarily_invalidates": [],
+          "text": "用户的自行车状态正常。",
+          "time": "2026-06-28",
+          "token_cost": 8,
+          "valid_from": "2026-06-28",
+          "valid_to": null
+        },
+        {
+          "memory_id": "S125_weather_commute_M6",
+          "operation": "ADD",
+          "status_by_change_query": "HISTORICAL",
+          "status_by_current_query": "CURRENT",
+          "status_by_historical_query": "HISTORICAL",
+          "supersedes": [],
+          "temporarily_invalidates": [],
+          "text": "用户的地铁卡余额充足。",
+          "time": "2026-06-28",
+          "token_cost": 8,
+          "valid_from": "2026-06-28",
+          "valid_to": null
+        }
+      ],
+      "queries": [
+        {
+          "answer_memory_ids": [
+            "S125_weather_commute_M3",
+            "S125_weather_commute_M4",
+            "S125_weather_commute_M6"
+          ],
+          "answerer_result": {
+            "answer_text": "模板回答：根据检索上下文和该数据集的参考答案，可回答为：根据有效记忆 S125_weather_commute_M3, S125_weather_commute_M4, S125_weather_commute_M6，可回答：四月起，工作日下雨时用户改乘地铁上班。；六月二十九日早晨有大雨。",
+            "answerer_type": "template",
+            "generated_tokens": 83,
+            "latency_ms": 0.002099999619531445,
+            "metadata": {
+              "cloud_api_calls": 0,
+              "generated_token_field": "generated_token_proxy",
+              "local_only": true,
+              "prompt_token_field": "prompt_token_proxy",
+              "tokenizer": "proxy"
+            },
+            "model_name": "deterministic_template_v1",
+            "prompt_tokens": 95,
+            "tokens_per_second": 39523816.684556864,
+            "used_memory_ids": [
+              "S125_weather_commute_M3",
+              "S125_weather_commute_M4",
+              "S125_weather_commute_M6"
+            ]
+          },
+          "answerer_type": "template",
+          "memorybank_retrieved": [
+            "S125_weather_commute_M1",
+            "S125_weather_commute_M2",
+            "S125_weather_commute_M3"
+          ],
+          "memorybank_wrong_answer": "如果优先引用旧记忆或干扰记忆，回答可能与当前/历史视图不一致。",
+          "model_name": "deterministic_template_v1",
+          "query_id": "S125_weather_commute_Q_CURRENT",
+          "query_type": "CURRENT",
+          "statebudgetmem_answer": "模板回答：根据检索上下文和该数据集的参考答案，可回答为：根据有效记忆 S125_weather_commute_M3, S125_weather_commute_M4, S125_weather_commute_M6，可回答：四月起，工作日下雨时用户改乘地铁上班。；六月二十九日早晨有大雨。",
+          "statebudgetmem_retrieved": [
+            "S125_weather_commute_M3",
+            "S125_weather_commute_M4",
+            "S125_weather_commute_M6"
+          ],
+          "template_answer": "模板回答：根据检索上下文和该数据集的参考答案，可回答为：根据有效记忆 S125_weather_commute_M3, S125_weather_commute_M4, S125_weather_commute_M6，可回答：四月起，工作日下雨时用户改乘地铁上班。；六月二十九日早晨有大雨。",
+          "text": "今天下大雨，我应该怎么去上班？"
+        },
+        {
+          "answer_memory_ids": [
+            "S125_weather_commute_M1"
+          ],
+          "answerer_result": {
+            "answer_text": "模板回答：根据检索上下文和该数据集的参考答案，可回答为：根据有效记忆 S125_weather_commute_M1，可回答：一月至三月，用户工作日不分天气都乘公交上班。",
+            "answerer_type": "template",
+            "generated_tokens": 65,
+            "latency_ms": 0.0006000000212225132,
+            "metadata": {
+              "cloud_api_calls": 0,
+              "generated_token_field": "generated_token_proxy",
+              "local_only": true,
+              "prompt_token_field": "prompt_token_proxy",
+              "tokenizer": "proxy"
+            },
+            "model_name": "deterministic_template_v1",
+            "prompt_tokens": 114,
+            "tokens_per_second": 108333329.50149082,
+            "used_memory_ids": [
+              "S125_weather_commute_M1",
+              "S125_weather_commute_M2",
+              "S125_weather_commute_M3"
+            ]
+          },
+          "answerer_type": "template",
+          "memorybank_retrieved": [
+            "S125_weather_commute_M2",
+            "S125_weather_commute_M3",
+            "S125_weather_commute_M1"
+          ],
+          "memorybank_wrong_answer": "如果优先引用旧记忆或干扰记忆，回答可能与当前/历史视图不一致。",
+          "model_name": "deterministic_template_v1",
+          "query_id": "S125_weather_commute_Q_HISTORICAL",
+          "query_type": "HISTORICAL",
+          "statebudgetmem_answer": "模板回答：根据检索上下文和该数据集的参考答案，可回答为：根据有效记忆 S125_weather_commute_M1，可回答：一月至三月，用户工作日不分天气都乘公交上班。",
+          "statebudgetmem_retrieved": [
+            "S125_weather_commute_M1",
+            "S125_weather_commute_M2",
+            "S125_weather_commute_M3"
+          ],
+          "template_answer": "模板回答：根据检索上下文和该数据集的参考答案，可回答为：根据有效记忆 S125_weather_commute_M1，可回答：一月至三月，用户工作日不分天气都乘公交上班。",
+          "text": "二月份一个普通工作日我怎么上班？"
+        },
+        {
+          "answer_memory_ids": [
+            "S125_weather_commute_M1",
+            "S125_weather_commute_M2",
+            "S125_weather_commute_M3"
+          ],
+          "answerer_result": {
+            "answer_text": "模板回答：根据检索上下文和该数据集的参考答案，可回答为：根据有效记忆 S125_weather_commute_M1, S125_weather_commute_M2, S125_weather_commute_M3，可回答：一月至三月，用户工作日不分天气都乘公交上班。；四月起，工作日天气干燥时用户骑车上班。",
+            "answerer_type": "template",
+            "generated_tokens": 93,
+            "latency_ms": 0.00039999940781854093,
+            "metadata": {
+              "cloud_api_calls": 0,
+              "generated_token_field": "generated_token_proxy",
+              "local_only": true,
+              "prompt_token_field": "prompt_token_proxy",
+              "tokenizer": "proxy"
+            },
+            "model_name": "deterministic_template_v1",
+            "prompt_tokens": 119,
+            "tokens_per_second": 232500344.20598266,
+            "used_memory_ids": [
+              "S125_weather_commute_M1",
+              "S125_weather_commute_M2",
+              "S125_weather_commute_M3"
+            ]
+          },
+          "answerer_type": "template",
+          "memorybank_retrieved": [
+            "S125_weather_commute_M1",
+            "S125_weather_commute_M2",
+            "S125_weather_commute_M3"
+          ],
+          "memorybank_wrong_answer": "如果优先引用旧记忆或干扰记忆，回答可能与当前/历史视图不一致。",
+          "model_name": "deterministic_template_v1",
+          "query_id": "S125_weather_commute_Q_CHANGE",
+          "query_type": "CHANGE",
+          "statebudgetmem_answer": "模板回答：根据检索上下文和该数据集的参考答案，可回答为：根据有效记忆 S125_weather_commute_M1, S125_weather_commute_M2, S125_weather_commute_M3，可回答：一月至三月，用户工作日不分天气都乘公交上班。；四月起，工作日天气干燥时用户骑车上班。",
+          "statebudgetmem_retrieved": [
+            "S125_weather_commute_M1",
+            "S125_weather_commute_M2",
+            "S125_weather_commute_M3"
+          ],
+          "template_answer": "模板回答：根据检索上下文和该数据集的参考答案，可回答为：根据有效记忆 S125_weather_commute_M1, S125_weather_commute_M2, S125_weather_commute_M3，可回答：一月至三月，用户工作日不分天气都乘公交上班。；四月起，工作日天气干燥时用户骑车上班。",
+          "text": "我的通勤规则从固定公交变成了哪些条件方案？"
+        }
+      ],
+      "resource_panel": {
+        "answerer_requested": "template",
+        "answerer_type": "template",
+        "cloud_api_calls": 0,
+        "embedding": "sentence-transformers/all-MiniLM-L6-v2",
+        "generated_tokens": 49,
+        "generation_latency_ms": 0.0024000000848900527,
+        "local_llm_endpoint": null,
+        "local_llm_unavailable_reason": null,
+        "local_only": true,
+        "memory_count": 2000,
+        "model_name": "deterministic_template_v1",
+        "prompt_tokens": 70,
+        "retrieval_latency_ms": 0.30215833333333336,
+        "storage": "local JSONL / metadata / embedding files",
+        "storage_bytes": 7394472.0,
+        "token_budget": 256,
+        "token_proxy_metric": "memory_record_token_cost / prompt token proxy",
+        "tokens_per_second": 20416665.94451173,
+        "vector_index": "local FAISS IndexFlatIP"
+      },
+      "source_scenario": "S125_weather_commute",
+      "thesis": "通勤方式由单一公交升级为晴天骑车、雨天地铁的条件规则。",
+      "why_statebudgetmem": "StateBudgetMem-style demo first applies query-type/view scoping, then retrieves from memories that are valid for that question view."
+    }
+  ],
+  "free_question_demo": {
+    "answerer": "browser_template_answerer",
+    "deepseek_default_model": "deepseek-chat",
+    "deepseek_server_endpoint": "/api/free-question-answer",
+    "default_case_id": "temporary_invalidation",
+    "enabled": true,
+    "llm_policy": "Template answers are the default. Optional DeepSeek answers require the local final_showcase demo server; API keys are never written into the generated files.",
+    "retrieval_boundary": "Free question demo is illustrative only. It compares context construction strategies over fixed demo memories in the browser and is not used for formal metrics.",
+    "retrieval_boundary_zh": "自由提问区仅用于展示检索策略差异；它只在浏览器中复用固定案例记忆，不计入正式实验指标。正式结论来自 results/fair_comparison_v2。",
+    "statebudgetmem_demo_name": "StateBudgetMem-style scoped retrieval demo",
+    "top_k": 3
+  },
+  "memory_explorer": {
+    "case_id": "temporary_invalidation",
+    "conversation": [
+      {
+        "memory_id": "S105_M1",
+        "speaker": "user",
+        "text": "用户平时可以接受微辣口味。",
+        "time": "2026-01-12"
+      },
+      {
+        "memory_id": "S105_M2",
+        "speaker": "user",
+        "text": "口腔手术后，医生要求六月二十日至七月五日避免辣味食物。",
+        "time": "2026-06-20"
+      },
+      {
+        "memory_id": "S105_Q_CURRENT",
+        "speaker": "user",
+        "text": "今天点菜时辣度应该怎么选？",
+        "time": "2026-06-29"
+      }
+    ],
+    "failure_mode": "MemoryBank 容易把“平时可以微辣”当成今天仍然有效。",
+    "label": "临时失效：口腔手术后暂时禁辣",
+    "label_en": "Temporary invalidation",
+    "label_note": "Showcase and analysis tool, not a formal experiment",
+    "memories": [
+      {
+        "memory_id": "S105_M1",
+        "operation": "ADD",
+        "status_by_change_query": "HISTORICAL",
+        "status_by_current_query": "STALE",
+        "status_by_historical_query": "CURRENT",
+        "text": "用户平时可以接受微辣口味。",
+        "time": "2026-01-12",
+        "token_cost": 8,
+        "valid_from": "2026-01-12",
+        "valid_to": null
+      },
+      {
+        "memory_id": "S105_M2",
+        "operation": "TEMP_INVALIDATE",
+        "status_by_change_query": "CURRENT",
+        "status_by_current_query": "CURRENT",
+        "status_by_historical_query": "STALE",
+        "temporarily_invalidates": [
+          "S105_M1"
+        ],
+        "text": "口腔手术后，医生要求用户六月二十日至七月五日避免辣味食物。",
+        "time": "2026-06-20",
+        "token_cost": 17,
+        "valid_from": "2026-06-20",
+        "valid_to": "2026-07-05"
+      },
+      {
+        "memory_id": "S105_M3",
+        "operation": "ADD",
+        "status_by_change_query": "HISTORICAL",
+        "status_by_current_query": "HISTORICAL",
+        "status_by_historical_query": "HISTORICAL",
+        "text": "用户一直很喜欢川菜的香味。",
+        "time": "2026-02-01",
+        "token_cost": 8,
+        "valid_from": "2026-02-01",
+        "valid_to": null
+      }
+    ],
+    "queries": [
+      {
+        "answer_memory_ids": [
+          "S105_M2"
+        ],
+        "answerer_result": {
+          "answer_text": "模板回答：根据检索上下文和该数据集的参考答案，可回答为：今天处在术后禁辣期，应选择不辣或清淡口味。",
+          "answerer_type": "template",
+          "generated_tokens": 49,
+          "latency_ms": 0.0024000000848900527,
+          "metadata": {
+            "cloud_api_calls": 0,
+            "generated_token_field": "generated_token_proxy",
+            "local_only": true,
+            "prompt_token_field": "prompt_token_proxy",
+            "tokenizer": "proxy"
+          },
+          "model_name": "deterministic_template_v1",
+          "prompt_tokens": 70,
+          "tokens_per_second": 20416665.94451173,
+          "used_memory_ids": [
+            "S105_M2"
+          ]
+        },
+        "answerer_type": "template",
+        "memorybank_retrieved": [
+          "S105_M1",
+          "S105_M2",
+          "S105_M3"
+        ],
+        "memorybank_wrong_answer": "可以选择微辣，因为你平时能接受微辣。",
+        "model_name": "deterministic_template_v1",
+        "query_id": "S105_Q_CURRENT",
+        "query_type": "CURRENT",
+        "statebudgetmem_answer": "模板回答：根据检索上下文和该数据集的参考答案，可回答为：今天处在术后禁辣期，应选择不辣或清淡口味。",
+        "statebudgetmem_retrieved": [
+          "S105_M2"
+        ],
+        "template_answer": "模板回答：根据检索上下文和该数据集的参考答案，可回答为：今天处在术后禁辣期，应选择不辣或清淡口味。",
+        "text": "今天点菜时辣度应该怎么选？"
+      },
+      {
+        "answer_memory_ids": [
+          "S105_M1"
+        ],
+        "answerer_result": {
+          "answer_text": "模板回答：根据检索上下文和该数据集的参考答案，可回答为：五月中旬还未进入术后禁辣期，历史状态是可以接受微辣。",
+          "answerer_type": "template",
+          "generated_tokens": 54,
+          "latency_ms": 0.0012000000424450263,
+          "metadata": {
+            "cloud_api_calls": 0,
+            "generated_token_field": "generated_token_proxy",
+            "local_only": true,
+            "prompt_token_field": "prompt_token_proxy",
+            "tokenizer": "proxy"
+          },
+          "model_name": "deterministic_template_v1",
+          "prompt_tokens": 69,
+          "tokens_per_second": 44999998.40831157,
+          "used_memory_ids": [
+            "S105_M1",
+            "S105_M3"
+          ]
+        },
+        "answerer_type": "template",
+        "memorybank_retrieved": [
+          "S105_M2",
+          "S105_M1",
+          "S105_M3"
+        ],
+        "memorybank_wrong_answer": "五月中旬也应避免辣味食物。",
+        "model_name": "deterministic_template_v1",
+        "query_id": "S105_Q_HISTORICAL",
+        "query_type": "HISTORICAL",
+        "statebudgetmem_answer": "模板回答：根据检索上下文和该数据集的参考答案，可回答为：五月中旬还未进入术后禁辣期，历史状态是可以接受微辣。",
+        "statebudgetmem_retrieved": [
+          "S105_M1",
+          "S105_M3"
+        ],
+        "template_answer": "模板回答：根据检索上下文和该数据集的参考答案，可回答为：五月中旬还未进入术后禁辣期，历史状态是可以接受微辣。",
+        "text": "五月中旬我能接受什么辣度？"
+      },
+      {
+        "answer_memory_ids": [
+          "S105_M1",
+          "S105_M2"
+        ],
+        "answerer_result": {
+          "answer_text": "模板回答：根据检索上下文和该数据集的参考答案，可回答为：原本可以微辣，但术后医生要求短期禁辣，所以当前状态被临时覆盖。",
+          "answerer_type": "template",
+          "generated_tokens": 59,
+          "latency_ms": 0.0006000000212225132,
+          "metadata": {
+            "cloud_api_calls": 0,
+            "generated_token_field": "generated_token_proxy",
+            "local_only": true,
+            "prompt_token_field": "prompt_token_proxy",
+            "tokenizer": "proxy"
+          },
+          "model_name": "deterministic_template_v1",
+          "prompt_tokens": 89,
+          "tokens_per_second": 98333329.85519935,
+          "used_memory_ids": [
+            "S105_M1",
+            "S105_M2"
+          ]
+        },
+        "answerer_type": "template",
+        "memorybank_retrieved": [
+          "S105_M1",
+          "S105_M2",
+          "S105_M3"
+        ],
+        "memorybank_wrong_answer": "你一直喜欢微辣，没有明显变化。",
+        "model_name": "deterministic_template_v1",
+        "query_id": "S105_Q_CHANGE",
+        "query_type": "CHANGE",
+        "statebudgetmem_answer": "模板回答：根据检索上下文和该数据集的参考答案，可回答为：原本可以微辣，但术后医生要求短期禁辣，所以当前状态被临时覆盖。",
+        "statebudgetmem_retrieved": [
+          "S105_M1",
+          "S105_M2"
+        ],
+        "template_answer": "模板回答：根据检索上下文和该数据集的参考答案，可回答为：原本可以微辣，但术后医生要求短期禁辣，所以当前状态被临时覆盖。",
+        "text": "我的辣度状态为什么暂时发生了变化？"
+      }
+    ],
+    "resource_panel": {
+      "answerer_requested": "template",
+      "answerer_type": "template",
+      "cloud_api_calls": 0,
+      "embedding": "sentence-transformers/all-MiniLM-L6-v2",
+      "generated_tokens": 49,
+      "generation_latency_ms": 0.0024000000848900527,
+      "local_llm_endpoint": null,
+      "local_llm_unavailable_reason": null,
+      "local_only": true,
+      "memory_count": 2000,
+      "model_name": "deterministic_template_v1",
+      "prompt_tokens": 70,
+      "retrieval_latency_ms": 0.30215833333333336,
+      "storage": "local JSONL / metadata / embedding files",
+      "storage_bytes": 7394472.0,
+      "token_budget": 256,
+      "token_proxy_metric": "memory_record_token_cost / prompt token proxy",
+      "tokens_per_second": 20416665.94451173,
+      "vector_index": "local FAISS IndexFlatIP"
+    },
+    "source_scenario": "S105_spicy_oral_surgery",
+    "thesis": "长期偏好没有消失，但当前问题必须优先使用临时健康限制。",
+    "why_statebudgetmem": "StateBudgetMem 将长期偏好保留为历史/底层状态，并把临时禁辣标为当前有效约束。"
+  },
+  "metadata": {
+    "answerer": {
+      "actual": "template",
+      "cloud_api_calls": 0,
+      "latest_result": {
+        "answer_text": "模板回答：根据检索上下文和该数据集的参考答案，可回答为：根据有效记忆 S125_weather_commute_M1, S125_weather_commute_M2, S125_weather_commute_M3，可回答：一月至三月，用户工作日不分天气都乘公交上班。；四月起，工作日天气干燥时用户骑车上班。",
+        "answerer_type": "template",
+        "generated_tokens": 93,
+        "latency_ms": 0.00039999940781854093,
+        "metadata": {
+          "cloud_api_calls": 0,
+          "generated_token_field": "generated_token_proxy",
+          "local_only": true,
+          "prompt_token_field": "prompt_token_proxy",
+          "tokenizer": "proxy"
+        },
+        "model_name": "deterministic_template_v1",
+        "prompt_tokens": 119,
+        "tokens_per_second": 232500344.20598266,
+        "used_memory_ids": [
+          "S125_weather_commute_M1",
+          "S125_weather_commute_M2",
+          "S125_weather_commute_M3"
+        ]
+      },
+      "local_llm_unavailable_reason": null,
+      "local_only": true,
+      "model_name": "deterministic_template_v1",
+      "requested": "template"
+    },
+    "created_at": "2026-07-20T08:11:03.914486+00:00",
+    "formal_conclusion_source": "results/fair_comparison_v2",
+    "scope": "local static showcase; no cloud API; optional local LLM for demo only",
+    "title": "StateBudgetMem Final Showcase"
+  }
+}
